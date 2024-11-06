@@ -130,6 +130,64 @@ def add_team():
 if st.button("Add New Team"):
     add_team()
 
+# Add Demo Teams
+if st.button("Add Demo Teams"):
+    demo_teams = [
+        {
+            'team_name': 'Product Team',
+            'team_description': 'Handles product management and development.',
+            'start_date': datetime(2024, 1, 1),
+            'end_date': datetime(2029, 12, 31),
+            'duration_weeks': 0,
+            'team_roles': [
+                {'role': 'Product Manager', 'count': 2, 'hours': 40, 'resource_type': 'Onshore FTE'},
+                {'role': 'UX Designers', 'count': 1, 'hours': 40, 'resource_type': 'Offshore FTE'}
+            ],
+            'cost_per_year': {},
+            'total_team_cost': 0
+        },
+        {
+            'team_name': 'Operations Team',
+            'team_description': 'Responsible for operational tasks and management.',
+            'start_date': datetime(2024, 1, 1),
+            'end_date': datetime(2029, 12, 31),
+            'duration_weeks': 0,
+            'team_roles': [
+                {'role': 'Management', 'count': 1, 'hours': 40, 'resource_type': 'Onshore FTE'},
+                {'role': 'Scrum Masters', 'count': 1, 'hours': 40, 'resource_type': 'Offshore FTE'}
+            ],
+            'cost_per_year': {},
+            'total_team_cost': 0
+        },
+        {
+            'team_name': 'Development Team',
+            'team_description': 'Handles software development and infrastructure.',
+            'start_date': datetime(2024, 1, 1),
+            'end_date': datetime(2029, 12, 31),
+            'duration_weeks': 0,
+            'team_roles': [
+                {'role': 'Core Dev, Data Science & Infra', 'count': 3, 'hours': 40, 'resource_type': 'Onshore FTE'},
+                {'role': 'QA', 'count': 2, 'hours': 40, 'resource_type': 'Offshore FTE'}
+            ],
+            'cost_per_year': {},
+            'total_team_cost': 0
+        },
+        {
+            'team_name': 'Support Team',
+            'team_description': 'Provides product support and specialist knowledge.',
+            'start_date': datetime(2024, 1, 1),
+            'end_date': datetime(2029, 12, 31),
+            'duration_weeks': 0,
+            'team_roles': [
+                {'role': 'Product Specialists', 'count': 2, 'hours': 40, 'resource_type': 'Onshore FTE'},
+                {'role': 'QA', 'count': 1, 'hours': 40, 'resource_type': 'Offshore FTE'}
+            ],
+            'cost_per_year': {},
+            'total_team_cost': 0
+        }
+    ]
+    st.session_state.teams.extend(demo_teams)
+
 # Display existing teams and allow editing
 for idx, team in enumerate(st.session_state.teams):
     with st.expander(f"Team {idx+1} Details", expanded=True):
