@@ -18,11 +18,11 @@ st.markdown(
     <style>
     .stApp {
         background-color: #fefefe;
-        color: #ffffff;
+        color: #999999;
     }
     .stButton > button, .stDownloadButton > button {
         background-color: #1abc9c;
-        color: #ffffff;
+        color: #999999;
         border-radius: 10px;
     }
     .stButton > button:hover, .stDownloadButton > button:hover {
