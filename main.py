@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # Define the roles and their rates
 hourly_rates = {
@@ -54,6 +54,10 @@ hourly_rates = {
 def calculate_team_cost_per_year(team_roles, start_date, end_date):
     total_cost = 0
     cost_per_year = {}
+    # Convert start_date and end_date to pd.Timestamp
+    start_date = pd.Timestamp(start_date)
+    end_date = pd.Timestamp(end_date)
+
     duration_days = (end_date - start_date).days + 1  # Include end date
     duration_weeks = duration_days / 7
 
@@ -204,8 +208,8 @@ with tab1:
                 team_name = team['team_name']
                 team_cost = team['total_team_cost']
                 team_description = team['team_description']
-                start_date = team['start_date']
-                end_date = team['end_date']
+                start_date = pd.Timestamp(team['start_date'])
+                end_date = pd.Timestamp(team['end_date'])
                 gantt_data.append({
                     'Team': team_name,
                     'Start': start_date,
