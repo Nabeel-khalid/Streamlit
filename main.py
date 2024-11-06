@@ -22,7 +22,7 @@ st.markdown(
     }
     .stButton > button, .stDownloadButton > button {
         background-color: #1abc9c;
-        color: #999999;
+        color: #ffffff;
         border-radius: 10px;
     }
     .stButton > button:hover, .stDownloadButton > button:hover {
