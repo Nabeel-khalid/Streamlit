@@ -127,7 +127,18 @@ ebita = st.number_input(
     value=historical_ebita,
     step=100,
 )
-net_positive = revenue - ebita
+net_positive = revenue - ebita - taxes
+
+# User input for additional costs
+st.header("Additional Costs")
+marketing_costs = st.number_input("Marketing Costs (USD)", min_value=0, value=0, step=100)
+operational_costs = st.number_input("Operational Costs (USD)", min_value=0, value=0, step=100)
+office_rent = st.number_input("Office Rent (USD)", min_value=0, value=0, step=100)
+insurance_costs = st.number_input("Insurance Costs (USD)", min_value=0, value=0, step=100)
+other_costs = st.number_input("Other Miscellaneous Costs (USD)", min_value=0, value=0, step=100)
+
+total_additional_costs = marketing_costs + operational_costs + office_rent + insurance_costs + other_costs
+net_positive -= total_additional_costs
 
 # User input for Year-on-Year projections
 st.header("Year-on-Year Financial Projections")
@@ -152,7 +163,7 @@ for year in range(1, years + 1):
     new_revenue = new_clients_per_year * average_client_revenue
     new_costs = new_clients_per_year * client_costs
     current_revenue += new_revenue
-    current_net_positive += new_revenue - new_costs - ebita
+    current_net_positive += new_revenue - new_costs - ebita - total_additional_costs
     yoy_data.append({"Year": f"Year {year}", "Net Positive": current_net_positive})
 
 # Convert data to DataFrame for plotting
@@ -193,8 +204,8 @@ if st.button("Calculate Costs"):
     # Create a YOY graph for financial impact
     financial_df = pd.DataFrame(
         {
-            "Category": ["Revenue", "Taxes", "EBITA", "Net Positive"],
-            "Value": [revenue, taxes, ebita, net_positive],
+            "Category": ["Revenue", "Taxes", "EBITA", "Additional Costs", "Net Positive"],
+            "Value": [revenue, taxes, ebita, total_additional_costs, net_positive],
         }
     )
     yoy_chart = (
@@ -204,6 +215,11 @@ if st.button("Calculate Costs"):
         .properties(title="Year Over Year Financial Impact")
     )
     st.altair_chart(yoy_chart, use_container_width=True)
+
+    # Option to save the cost breakdown as a CSV
+    if st.button("Download Cost Breakdown as CSV"):
+        cost_df.to_csv("cost_breakdown.csv", index=False)
+        st.write("Cost breakdown saved as 'cost_breakdown.csv'.")
 
 # Instructions to run the app
 # Save this code to a file (e.g., `team_cost_calculator.py`) and run it using the command `streamlit run team_cost_calculator.py`.
