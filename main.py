@@ -17,7 +17,7 @@ st.markdown(
     """
     <style>
     .stApp {
-        background-color: #0e1117;
+        background-color: #fefefe;
         color: #ffffff;
     }
     .stButton > button, .stDownloadButton > button {
