@@ -4,6 +4,41 @@ import pandas as pd
 import altair as alt
 from datetime import datetime
 
+# Set Streamlit configuration for dark mode and custom colors
+st.set_page_config(
+    page_title="Team Cost Calculator",
+    page_icon="💸",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Apply custom CSS for dark mode and turquoise highlight colors
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background-color: #0e1117;
+        color: #ffffff;
+    }
+    .stButton > button, .stDownloadButton > button {
+        background-color: #1abc9c;
+        color: #ffffff;
+        border-radius: 10px;
+    }
+    .stButton > button:hover, .stDownloadButton > button:hover {
+        background-color: #16a085;
+    }
+    .st-sidebar {
+        background-color: #0e1117;
+    }
+    .stSelectbox, .stNumberInput, .stTextInput, .stDateInput, .stTextArea {
+        color: #000000;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # Define the roles and their rates
 hourly_rates = {
     'Management': {
