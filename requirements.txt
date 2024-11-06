@@ -3,3 +3,4 @@ matplotlib
 plotly
 pandas
 altair
+datetime
