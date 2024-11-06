@@ -351,26 +351,15 @@ if st.button("Generate Gantt Chart and Cost Summary"):
 
             st.altair_chart(stacked_bar_chart, use_container_width=True)
 
-df = pd.DataFrame({
-    'Name': ['Alice', 'Bob', 'Charlie'],
-    'Age': [25, 30, 35],
-    'Department': ['HR', 'IT', 'Finance']
-})
-
-# Display the dataframe in Streamlit
-st.write("## Team Cost Data")
-st.dataframe(df)
-
-# Add a download button for CSV
-csv = df.to_csv(index=False)
-st.download_button(
-    label="Download data as CSV",
-    data=csv,
-    file_name='team_cost_data.csv',
-    mime='text/csv'
-)
-
-
+            # Add download button for detailed cost breakdown
+            st.subheader("Download Detailed Cost Breakdown")
+            detailed_csv = detailed_df.to_csv(index=False)
+            st.download_button(
+                label="Download Detailed Costs as CSV",
+                data=detailed_csv,
+                file_name='detailed_costs_per_team.csv',
+                mime='text/csv'
+            )
 
 # Instructions to run the app
 # Save this code to a file (e.g., `team_cost_calculator.py`) and run it using the command `streamlit run team_cost_calculator.py`.
