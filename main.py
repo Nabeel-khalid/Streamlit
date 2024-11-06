@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
+from io import BytesIO
 
 # Define the roles and their rates
 hourly_rates = {
@@ -217,9 +218,14 @@ if st.button("Calculate Costs"):
     st.altair_chart(yoy_chart, use_container_width=True)
 
     # Option to save the cost breakdown as a CSV
-    if st.button("Download Cost Breakdown as CSV"):
-        cost_df.to_csv("cost_breakdown.csv", index=False)
-        st.write("Cost breakdown saved as 'cost_breakdown.csv'.")
+    csv_buffer = BytesIO()
+    cost_df.to_csv(csv_buffer, index=False)
+    st.download_button(
+        label="Download Cost Breakdown as CSV",
+        data=csv_buffer,
+        file_name="cost_breakdown.csv",
+        mime="text/csv",
+    )
 
 # Instructions to run the app
 # Save this code to a file (e.g., `team_cost_calculator.py`) and run it using the command `streamlit run team_cost_calculator.py`.
