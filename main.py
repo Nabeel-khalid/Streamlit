@@ -35,50 +35,50 @@ def calculate_costs(team):
     return costs
 
 # Streamlit UI
-st.title("Team Cost Calculator")
+streamlit.title("Team Cost Calculator")
 
 # Sidebar for defining new roles and adjusting hourly rates
-st.sidebar.header("Manage Roles and Hourly Rates")
-new_role = st.sidebar.text_input("Add New Role")
-new_rate = st.sidebar.number_input("Hourly Rate for New Role", min_value=0, value=0, step=1)
-if st.sidebar.button("Add Role"):
+streamlit.sidebar.header("Manage Roles and Hourly Rates")
+new_role = streamlit.sidebar.text_input("Add New Role")
+new_rate = streamlit.sidebar.number_input("Hourly Rate for New Role", min_value=0, value=0, step=1)
+if streamlit.sidebar.button("Add Role"):
     if new_role and new_rate > 0:
         hourly_rates[new_role] = new_rate
 
 # Allow updating of existing hourly rates
-st.sidebar.subheader("Adjust Hourly Rates")
+streamlit.sidebar.subheader("Adjust Hourly Rates")
 for role in list(hourly_rates.keys()):
-    new_rate = st.sidebar.number_input(f"Hourly Rate for {role}", min_value=0, value=hourly_rates[role], step=1)
+    new_rate = streamlit.sidebar.number_input(f"Hourly Rate for {role}", min_value=0, value=hourly_rates[role], step=1)
     hourly_rates[role] = new_rate
 
 # User input for team configuration (in two columns)
-st.write("Enter the number of professionals and average weekly hours for each role:")
-col1, col2 = st.columns(2)
+streamlit.write("Enter the number of professionals and average weekly hours for each role:")
+col1, col2 = streamlit.columns(2)
 team = {}
 for role in hourly_rates.keys():
     with col1:
-        count = st.number_input(f"Number of {role}s", min_value=0, value=0, step=1, key=f"{role}_count")
+        count = streamlit.number_input(f"Number of {role}s", min_value=0, value=0, step=1, key=f"{role}_count")
     with col2:
-        hours = st.number_input(f"Average weekly hours per {role}", min_value=0.0, value=0.0, step=0.1, key=f"{role}_hours")
+        hours = streamlit.number_input(f"Average weekly hours per {role}", min_value=0.0, value=0.0, step=0.1, key=f"{role}_hours")
     team[role] = {'count': count, 'hours': hours}
 
 # User input for financial impact
-st.header("Financial Impact")
-revenue = st.number_input("Revenue (USD)", min_value=0, value=0, step=1000)
+streamlit.header("Financial Impact")
+revenue = streamlit.number_input("Revenue (USD)", min_value=0, value=0, step=1000)
 
 # Historical EBITA data (example value)
 historical_ebita = 5000
 
-taxes = st.number_input("Taxes (USD, included in EBITA)", min_value=0, value=0, step=100)
-ebita = st.number_input(f"EBITA (USD, historical value: ${historical_ebita})", min_value=0, value=historical_ebita, step=100)
+taxes = streamlit.number_input("Taxes (USD, included in EBITA)", min_value=0, value=0, step=100)
+ebita = streamlit.number_input(f"EBITA (USD, historical value: ${historical_ebita})", min_value=0, value=historical_ebita, step=100)
 net_positive = revenue - ebita
 
 # User input for Year-on-Year projections
-st.header("Year-on-Year Financial Projections")
-years = st.slider("Select number of years for projection", min_value=5, max_value=10, value=5)
-new_clients_per_year = st.number_input("Net New Clients per Year", min_value=0, value=0, step=1)
-average_client_revenue = st.number_input("Average Revenue per New Client (USD)", min_value=0, value=10000, step=1000)
-client_costs = st.number_input("Estimated Costs per Client (USD)", min_value=0, value=5000, step=100)
+streamlit.header("Year-on-Year Financial Projections")
+years = streamlit.slider("Select number of years for projection", min_value=5, max_value=10, value=5)
+new_clients_per_year = streamlit.number_input("Net New Clients per Year", min_value=0, value=0, step=1)
+average_client_revenue = streamlit.number_input("Average Revenue per New Client (USD)", min_value=0, value=10000, step=1000)
+client_costs = streamlit.number_input("Estimated Costs per Client (USD)", min_value=0, value=5000, step=100)
 
 # Calculate year-on-year projections
 yoy_data = []
@@ -112,14 +112,14 @@ yoy_chart += alt.Chart(yoy_df).mark_area(opacity=0.3).encode(
     y='Net Positive'
 )
 
-st.altair_chart(yoy_chart, use_container_width=True)
+streamlit.altair_chart(yoy_chart, use_container_width=True)
 
 # Calculate costs
-if st.button("Calculate Costs"):
+if streamlit.button("Calculate Costs"):
     costs = calculate_costs(team)
-    st.write("## Cost Breakdown:")
+    streamlit.write("## Cost Breakdown:")
     for timeframe, cost in costs.items():
-        st.write(f"{timeframe}: ${cost:,.2f}")
+        streamlit.write(f"{timeframe}: ${cost:,.2f}")
     
     # Create a DataFrame for plotting
     cost_df = pd.DataFrame(list(costs.items()), columns=['Timeframe', 'Cost'])
@@ -132,11 +132,11 @@ if st.button("Calculate Costs"):
     ).properties(
         title='Cost Breakdown by Timeframe'
     )
-    st.altair_chart(cost_chart, use_container_width=True)
+    streamlit.altair_chart(cost_chart, use_container_width=True)
 
     # Show net positive financial impact
-    st.write("## Net Positive Financial Impact")
-    st.write(f"Net Positive: ${net_positive:,.2f}")
+    streamlit.write("## Net Positive Financial Impact")
+    streamlit.write(f"Net Positive: ${net_positive:,.2f}")
 
     # Create a YOY graph for financial impact
     financial_df = pd.DataFrame({
@@ -150,7 +150,7 @@ if st.button("Calculate Costs"):
     ).properties(
         title='Year Over Year Financial Impact'
     )
-    st.altair_chart(yoy_chart, use_container_width=True)
+    streamlit.altair_chart(yoy_chart, use_container_width=True)
 
 # Instructions to run the app
 # Save this code to a file (e.g., `team_cost_calculator.py`) and run it using the command `streamlit run team_cost_calculator.py`.
