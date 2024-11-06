@@ -27,6 +27,7 @@ st.markdown(
     }
     .stButton > button:hover, .stDownloadButton > button:hover {
         background-color: #16a085;
+         color: #ffffff;
     }
     .st-sidebar {
         background-color: #0e1117;
