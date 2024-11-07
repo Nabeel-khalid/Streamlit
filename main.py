@@ -1,32 +1,34 @@
 import streamlit as st
 
-# Function to set and get persistent user input using session state
-def get_session_input(key, default_value=None):
-    if key in st.session_state:
-        return st.session_state[key]
-    else:
-        return default_value
+# Ensure default values are set in session state if they do not exist
+if "name" not in st.session_state:
+    st.session_state["name"] = ""
+if "hourly_rate" not in st.session_state:
+    st.session_state["hourly_rate"] = 0.0
+if "hours_worked" not in st.session_state:
+    st.session_state["hours_worked"] = 0.0
 
-def set_session_input(key, value):
-    st.session_state[key] = value
-
-# Streamlit UI for user input
+# Streamlit UI for user input with session state persistence
 def user_input_form():
     st.title("Team Cost Calculator")
     
-    # Example of getting user input with persistence
-    name = st.text_input("Enter your name", value=get_session_input("name", ""))
-    set_session_input("name", name)
+    # Input fields with session state persistence
+    name = st.text_input("Enter your name", value=st.session_state["name"])
+    if name != st.session_state["name"]:
+        st.session_state["name"] = name
+
+    hourly_rate = st.number_input("Enter hourly rate", value=st.session_state["hourly_rate"])
+    if hourly_rate != st.session_state["hourly_rate"]:
+        st.session_state["hourly_rate"] = hourly_rate
+
+    hours_worked = st.number_input("Enter hours worked", value=st.session_state["hours_worked"])
+    if hours_worked != st.session_state["hours_worked"]:
+        st.session_state["hours_worked"] = hours_worked
     
-    hourly_rate = st.number_input("Enter hourly rate", value=get_session_input("hourly_rate", 0))
-    set_session_input("hourly_rate", hourly_rate)
-    
-    hours_worked = st.number_input("Enter hours worked", value=get_session_input("hours_worked", 0))
-    set_session_input("hours_worked", hours_worked)
-    
+    # Calculate and display cost
     if st.button("Calculate Cost"):
-        cost = hourly_rate * hours_worked
-        st.write(f"Total cost for {name}: ${cost}")
+        cost = st.session_state["hourly_rate"] * st.session_state["hours_worked"]
+        st.write(f"Total cost for {st.session_state['name']}: ${cost}")
 
 # Run the user input form
 user_input_form()
@@ -526,4 +528,3 @@ if st.button("Generate Gantt Chart and Cost Summary"):
 
 # Instructions to run the app
 # Save this code to a file (e.g., `team_cost_calculator.py`) and run it using the command `streamlit run team_cost_calculator.py`.
-
