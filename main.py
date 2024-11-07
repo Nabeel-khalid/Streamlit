@@ -7,6 +7,11 @@ import random
 import json
 from datetime import datetime, date, timedelta
 
+
+# Streamlit UI
+st.set_page_config(page_title="Team Cost Calculator", layout="wide")
+st.title("Team Cost Calculator with Gantt Chart and Yearly Cost Summary")
+
 # Define the roles and their rates
 hourly_rates = {
     'Management': {
@@ -146,10 +151,6 @@ def generate_demo_teams():
             'total_team_cost': 0
         })
     return demo_teams
-
-# Streamlit UI
-st.set_page_config(page_title="Team Cost Calculator", layout="wide")
-st.title("Team Cost Calculator with Gantt Chart and Yearly Cost Summary")
 
 # Sidebar for adjusting hourly rates and data import/export
 with st.sidebar:
