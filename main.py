@@ -1,5 +1,8 @@
 import streamlit as st
 
+# Set page configuration (must be the first Streamlit command)
+st.set_page_config(page_title="Team Cost Calculator", layout="wide")
+
 # Ensure default values are set in session state if they do not exist
 if "name" not in st.session_state:
     st.session_state["name"] = ""
