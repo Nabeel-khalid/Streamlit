@@ -225,15 +225,13 @@ with st.sidebar:
         st.session_state.teams = generate_demo_teams()
         st.success("Demo teams have been generated.")
 
-    # Save Session
+    # Save Session to Browser
     if st.button('Save Session'):
-        session_data = {
+        st.session_state['saved_session'] = {
             'teams': st.session_state.teams,
             'hourly_rates': hourly_rates
         }
-        session_json = json.dumps(session_data, indent=4)
-        st.download_button('Download Session Data', data=session_json, file_name='session_data.json', mime='application/json')
-        st.success("Session data saved successfully.")
+        st.success("Session data saved to the browser successfully.")
 
 # Initialize session state for teams
 if 'teams' not in st.session_state:
