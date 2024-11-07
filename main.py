@@ -215,19 +215,6 @@ with st.sidebar:
         st.session_state.teams = teams_data
         st.success("Teams data uploaded successfully.")
 
-    # Save draft to browser storage
-    if st.button('Save Draft to Browser'):
-        st.session_state['saved_draft'] = st.session_state.get('teams', [])
-        st.success("Draft saved to browser storage successfully.")
-
-    # Load draft from browser storage
-    if st.button('Load Draft from Browser'):
-        if 'saved_draft' in st.session_state:
-            st.session_state.teams = st.session_state['saved_draft']
-            st.success("Draft loaded from browser storage successfully.")
-        else:
-            st.info("No draft found in browser storage.")
-
     # Reset Teams
     if st.button('Reset All Teams'):
         st.session_state.teams = []
