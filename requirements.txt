@@ -4,3 +4,5 @@ plotly
 pandas
 altair
 datetime
+random
+json
