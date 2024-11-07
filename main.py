@@ -2,43 +2,10 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-from datetime import datetime
-
-# Set Streamlit configuration for dark mode and custom colors
-st.set_page_config(
-    page_title="Team Cost Calculator",
-    page_icon="💸",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# Apply custom CSS for dark mode and turquoise highlight colors
-st.markdown(
-    """
-    <style>
-    .stApp {
-        background-color: #fefefe;
-        color: #999999;
-    }
-    .stButton > button, .stDownloadButton > button {
-        background-color: #1abc9c;
-        color: #ffffff;
-        border-radius: 10px;
-    }
-    .stButton > button:hover, .stDownloadButton > button:hover {
-        background-color: #16a085;
-         color: #ffffff;
-    }
-    .st-sidebar {
-        background-color: #0e1117;
-    }
-    .stSelectbox, .stNumberInput, .stTextInput, .stDateInput, .stTextArea {
-        color: #000000;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+import numpy as np
+import random
+import json
+from datetime import datetime, date, timedelta
 
 # Define the roles and their rates
 hourly_rates = {
@@ -126,24 +93,137 @@ def calculate_team_cost_per_year(team_roles, start_date, end_date):
 
     return cost_per_year
 
+# Function to calculate cost breakdown by role
+def calculate_role_costs(team_roles, start_date, end_date):
+    # Convert start_date and end_date to pd.Timestamp
+    start_date = pd.Timestamp(start_date)
+    end_date = pd.Timestamp(end_date)
+
+    duration_days = (end_date - start_date).days + 1  # Include end date
+    duration_weeks = duration_days / 7
+
+    role_costs = {}
+    for role_info in team_roles:
+        role = role_info['role']
+        count = role_info['count']
+        hours_per_week = role_info['hours']
+        resource_type = role_info['resource_type']
+        rate = hourly_rates.get(role, {}).get(resource_type, 0)
+        cost = count * hours_per_week * rate * duration_weeks
+        role_key = f"{role} ({resource_type})"
+        role_costs[role_key] = cost
+
+    return role_costs
+
+# Function to generate demo teams
+def generate_demo_teams():
+    demo_teams = []
+    team_names = ['Alpha', 'Beta', 'Gamma', 'Delta']
+    for i in range(4):
+        start_date = date.today() + timedelta(days=random.randint(0, 90))
+        end_date = start_date + timedelta(days=random.randint(90, 180))
+        num_roles = random.randint(1, 4)
+        team_roles = []
+        for _ in range(num_roles):
+            role = random.choice(list(hourly_rates.keys()))
+            resource_type = random.choice(list(hourly_rates[role].keys()))
+            count = random.randint(1, 5)
+            hours = random.choice([20, 30, 40])
+            team_roles.append({
+                'role': role,
+                'count': count,
+                'hours': hours,
+                'resource_type': resource_type
+            })
+        demo_teams.append({
+            'team_name': f"Team {team_names[i]}",
+            'team_description': f"Description for Team {team_names[i]}",
+            'start_date': start_date,
+            'end_date': end_date,
+            'duration_weeks': 0,
+            'team_roles': team_roles,
+            'cost_per_year': {},
+            'total_team_cost': 0
+        })
+    return demo_teams
+
 # Streamlit UI
+st.set_page_config(page_title="Team Cost Calculator", layout="wide")
 st.title("Team Cost Calculator with Gantt Chart and Yearly Cost Summary")
 
-# Sidebar for adjusting hourly rates
+# Sidebar for adjusting hourly rates and data import/export
 with st.sidebar:
-    st.header("Adjust Hourly Rates")
-    for role in hourly_rates.keys():
-        with st.expander(f"{role} Rates"):
-            for resource_type in hourly_rates[role]:
-                current_rate = hourly_rates[role][resource_type]
-                new_rate = st.number_input(
-                    f"{resource_type}",
-                    min_value=0,
-                    value=int(current_rate),
-                    step=1,
-                    key=f"{role}_{resource_type}"
-                )
-                hourly_rates[role][resource_type] = new_rate
+    st.header("Settings")
+    with st.sidebar.expander("Adjust Hourly Rates"):
+        for role in hourly_rates.keys():
+            with st.sidebar.expander(f"{role} Rates"):
+                for resource_type in hourly_rates[role]:
+                    current_rate = hourly_rates[role][resource_type]
+                    new_rate = st.number_input(
+                        f"{resource_type} ({role})",
+                        min_value=0,
+                        value=int(current_rate),
+                        step=1,
+                        key=f"{role}_{resource_type}"
+                    )
+                    hourly_rates[role][resource_type] = new_rate
+
+    st.header("Data Import/Export")
+
+    # Export Teams
+    if st.button('Export Teams'):
+        if st.session_state.get('teams'):
+            # Prepare data for export
+            teams_copy = []
+            for team in st.session_state.teams:
+                team_copy = team.copy()
+                # Convert datetime.date objects to strings
+                if isinstance(team_copy['start_date'], date):
+                    team_copy['start_date'] = team_copy['start_date'].isoformat()
+                if isinstance(team_copy['end_date'], date):
+                    team_copy['end_date'] = team_copy['end_date'].isoformat()
+                team_roles_copy = []
+                for role_info in team_copy['team_roles']:
+                    role_info_copy = role_info.copy()
+                    team_roles_copy.append(role_info_copy)
+                team_copy['team_roles'] = team_roles_copy
+                teams_copy.append(team_copy)
+
+            teams_json = json.dumps(teams_copy, indent=4)
+            st.download_button('Download Teams Data', data=teams_json, file_name='teams_data.json', mime='application/json')
+        else:
+            st.info("No teams to export.")
+
+    # Import Teams
+    uploaded_file = st.file_uploader("Upload Teams Data", type=['json'])
+    if uploaded_file is not None:
+        teams_json = uploaded_file.read().decode('utf-8')
+        teams_data = json.loads(teams_json)
+
+        # Convert date strings back to datetime.date objects
+        for team in teams_data:
+            if 'start_date' in team and team['start_date']:
+                team['start_date'] = datetime.fromisoformat(team['start_date']).date()
+            else:
+                team['start_date'] = None
+
+            if 'end_date' in team and team['end_date']:
+                team['end_date'] = datetime.fromisoformat(team['end_date']).date()
+            else:
+                team['end_date'] = None
+
+        st.session_state.teams = teams_data
+        st.success("Teams data uploaded successfully.")
+
+    # Reset Teams
+    if st.button('Reset All Teams'):
+        st.session_state.teams = []
+        st.success("All teams have been reset.")
+
+    # Generate Demo Teams
+    if st.button('Generate Demo Teams'):
+        st.session_state.teams = generate_demo_teams()
+        st.success("Demo teams have been generated.")
 
 # Initialize session state for teams
 if 'teams' not in st.session_state:
@@ -154,8 +234,8 @@ def add_team():
     st.session_state.teams.append({
         'team_name': '',
         'team_description': '',
-        'start_date': None,
-        'end_date': None,
+        'start_date': date.today(),
+        'end_date': date.today() + timedelta(days=30),
         'duration_weeks': 0,
         'team_roles': [],
         'cost_per_year': {},
@@ -166,156 +246,86 @@ def add_team():
 if st.button("Add New Team"):
     add_team()
 
-# Add Demo Teams
-if st.button("Add Demo Teams"):
-    demo_teams = [
-        {
-            'team_name': 'Product Team',
-            'team_description': 'Handles product management and development.',
-            'start_date': datetime(2024, 1, 1),
-            'end_date': datetime(2029, 12, 31),
-            'duration_weeks': 0,
-            'team_roles': [
-                {'role': 'Product Manager', 'count': 2, 'hours': 40, 'resource_type': 'Onshore FTE'},
-                {'role': 'UX Designers', 'count': 1, 'hours': 40, 'resource_type': 'Offshore FTE'}
-            ],
-            'cost_per_year': {},
-            'total_team_cost': 0
-        },
-        {
-            'team_name': 'Operations Team',
-            'team_description': 'Responsible for operational tasks and management.',
-            'start_date': datetime(2024, 1, 1),
-            'end_date': datetime(2029, 12, 31),
-            'duration_weeks': 0,
-            'team_roles': [
-                {'role': 'Management', 'count': 1, 'hours': 40, 'resource_type': 'Onshore FTE'},
-                {'role': 'Scrum Masters', 'count': 1, 'hours': 40, 'resource_type': 'Offshore FTE'}
-            ],
-            'cost_per_year': {},
-            'total_team_cost': 0
-        },
-        {
-            'team_name': 'Development Team',
-            'team_description': 'Handles software development and infrastructure.',
-            'start_date': datetime(2024, 1, 1),
-            'end_date': datetime(2029, 12, 31),
-            'duration_weeks': 0,
-            'team_roles': [
-                {'role': 'Core Dev, Data Science & Infra', 'count': 3, 'hours': 40, 'resource_type': 'Onshore FTE'},
-                {'role': 'QA', 'count': 2, 'hours': 40, 'resource_type': 'Offshore FTE'}
-            ],
-            'cost_per_year': {},
-            'total_team_cost': 0
-        },
-        {
-            'team_name': 'Support Team',
-            'team_description': 'Provides product support and specialist knowledge.',
-            'start_date': datetime(2024, 1, 1),
-            'end_date': datetime(2029, 12, 31),
-            'duration_weeks': 0,
-            'team_roles': [
-                {'role': 'Product Specialists', 'count': 2, 'hours': 40, 'resource_type': 'Onshore FTE'},
-                {'role': 'QA', 'count': 1, 'hours': 40, 'resource_type': 'Offshore FTE'}
-            ],
-            'cost_per_year': {},
-            'total_team_cost': 0
-        }
-    ]
-    st.session_state.teams.extend(demo_teams)
-
 # Display existing teams and allow editing
-for idx, team in enumerate(st.session_state.teams):
-    with st.expander(f"Team {idx+1} Details", expanded=True):
-        # Team Name and Description
-        team['team_name'] = st.text_input(f"Team {idx+1} Name", value=team['team_name'], key=f"team_{idx}_name")
-        team['team_description'] = st.text_area(f"Team {idx+1} Description", value=team['team_description'], key=f"team_{idx}_description")
-
-        # Team Duration
-        st.write("Team Duration")
-        col1, col2 = st.columns(2)
-        with col1:
-            team['start_date'] = st.date_input(f"Team {idx+1} Start Date", value=team['start_date'], key=f"team_{idx}_start_date")
-        with col2:
-            team['end_date'] = st.date_input(f"Team {idx+1} End Date", value=team['end_date'], key=f"team_{idx}_end_date")
-
-        if team['end_date'] and team['start_date']:
-            if team['end_date'] <= team['start_date']:
-                st.error("End date must be after start date.")
-                team['duration_weeks'] = 0
-            else:
-                duration_days = (team['end_date'] - team['start_date']).days + 1
-                team['duration_weeks'] = duration_days / 7
-
-        # Define Roles in Team
-        st.write("### Roles in Team")
-        num_roles = st.number_input(f"Number of Different Roles in Team {idx+1}", min_value=1, value=len(team['team_roles']) if team['team_roles'] else 1, step=1, key=f"team_{idx}_num_roles")
-
-        # Ensure team_roles list matches num_roles
-        while len(team['team_roles']) < num_roles:
-            team['team_roles'].append({'role': '', 'count': 0, 'hours': 0, 'resource_type': ''})
-        while len(team['team_roles']) > num_roles:
-            team['team_roles'].pop()
-
-        for j in range(int(num_roles)):
-            st.write(f"**Role {j+1} in Team {idx+1}**")
-            role_info = team['team_roles'][j]
-            role_info['role'] = st.selectbox(
-                f"Select Role",
-                options=list(hourly_rates.keys()),
-                index=list(hourly_rates.keys()).index(role_info['role']) if role_info['role'] in hourly_rates else 0,
-                key=f"team_{idx}_role_{j}"
-            )
-            role_info['count'] = st.number_input(
-                f"Number of {role_info['role']}s",
-                min_value=0,
-                value=int(role_info['count']),
-                step=1,
-                key=f"team_{idx}_role_{j}_count"
-            )
-            role_info['hours'] = st.number_input(
-                f"Average weekly hours per {role_info['role']}",
-                min_value=0.0,
-                value=float(role_info['hours']),
-                step=0.1,
-                key=f"team_{idx}_role_{j}_hours"
-            )
-            resource_types = list(hourly_rates.get(role_info['role'], {}).keys())
-            if resource_types:
-                role_info['resource_type'] = st.selectbox(
-                    f"Resource Type for {role_info['role']}",
-                    options=resource_types,
-                    index=resource_types.index(role_info['resource_type']) if role_info['resource_type'] in resource_types else 0,
-                    key=f"team_{idx}_role_{j}_resource_type"
-                )
-            else:
-                st.error(f"No resource types available for {role_info['role']}")
-
-# Display Team Summaries
-st.header("Current Team Structure")
 if st.session_state.teams:
-    for idx, team in enumerate(st.session_state.teams):
-        st.subheader(f"{team['team_name'] or f'Team {idx+1}'}")
-        st.write(f"**Description**: {team['team_description']}")
-        if team['start_date'] and team['end_date']:
-            st.write(f"**Duration**: {team['start_date']} to {team['end_date']} ({team['duration_weeks']:.1f} weeks)")
-        else:
-            st.write("**Duration**: Not specified")
-        # Display Roles
-        if team['team_roles']:
-            roles_data = []
-            for role_info in team['team_roles']:
-                roles_data.append({
-                    'Role': role_info['role'],
-                    'Resource Type': role_info['resource_type'],
-                    'Count': role_info['count'],
-                    'Weekly Hours': role_info['hours']
-                })
-            roles_df = pd.DataFrame(roles_data)
-            st.table(roles_df)
-        else:
-            st.write("No roles defined for this team.")
-        st.write("---")
+    team_tabs = st.tabs([team['team_name'] or f"Team {idx+1}" for idx, team in enumerate(st.session_state.teams)])
+    for idx, (team, team_tab) in enumerate(zip(st.session_state.teams, team_tabs)):
+        with team_tab:
+            # Collapsible Sections
+            with st.expander("Team Details", expanded=True):
+                # Team Name and Description
+                team['team_name'] = st.text_input(f"Team Name", value=team['team_name'], key=f"team_{idx}_name")
+                team['team_description'] = st.text_area(f"Team Description", value=team['team_description'], key=f"team_{idx}_description")
+
+            with st.expander("Team Duration", expanded=True):
+                # Team Duration
+                col1, col2 = st.columns(2)
+                with col1:
+                    team['start_date'] = st.date_input(f"Start Date", value=team['start_date'], key=f"team_{idx}_start_date")
+                with col2:
+                    team['end_date'] = st.date_input(f"End Date", value=team['end_date'], key=f"team_{idx}_end_date")
+
+                if team['end_date'] and team['start_date']:
+                    if team['end_date'] <= team['start_date']:
+                        st.error("End date must be after start date.")
+                        team['duration_weeks'] = 0
+                    else:
+                        duration_days = (team['end_date'] - team['start_date']).days + 1
+                        team['duration_weeks'] = duration_days / 7
+
+            with st.expander("Roles in Team", expanded=True):
+                # Define Roles in Team
+                num_roles = st.number_input(f"Number of Different Roles", min_value=1, value=len(team['team_roles']) if team['team_roles'] else 1, step=1, key=f"team_{idx}_num_roles")
+
+                # Ensure team_roles list matches num_roles
+                while len(team['team_roles']) < num_roles:
+                    team['team_roles'].append({'role': '', 'count': 0, 'hours': 0, 'resource_type': ''})
+                while len(team['team_roles']) > num_roles:
+                    team['team_roles'].pop()
+
+                for j in range(int(num_roles)):
+                    st.write(f"**Role {j+1}**")
+                    role_info = team['team_roles'][j]
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        role_info['role'] = st.selectbox(
+                            f"Role",
+                            options=list(hourly_rates.keys()),
+                            index=list(hourly_rates.keys()).index(role_info['role']) if role_info['role'] in hourly_rates else 0,
+                            key=f"team_{idx}_role_{j}"
+                        )
+                    with col2:
+                        resource_types = list(hourly_rates.get(role_info['role'], {}).keys())
+                        if resource_types:
+                            role_info['resource_type'] = st.selectbox(
+                                f"Resource Type",
+                                options=resource_types,
+                                index=resource_types.index(role_info['resource_type']) if role_info['resource_type'] in resource_types else 0,
+                                key=f"team_{idx}_role_{j}_resource_type"
+                            )
+                        else:
+                            st.error(f"No resource types available for {role_info['role']}")
+                    with col3:
+                        role_info['count'] = st.number_input(
+                            f"Count",
+                            min_value=0,
+                            value=int(role_info['count']),
+                            step=1,
+                            key=f"team_{idx}_role_{j}_count"
+                        )
+                    with col4:
+                        role_info['hours'] = st.number_input(
+                            f"Weekly Hours",
+                            min_value=0.0,
+                            value=float(role_info['hours']),
+                            step=0.1,
+                            key=f"team_{idx}_role_{j}_hours"
+                        )
+
+            # Delete Team Button
+            if st.button('Delete Team', key=f'delete_team_{idx}'):
+                del st.session_state.teams[idx]
+                st.experimental_rerun()
 else:
     st.write("No teams defined yet.")
 
@@ -337,6 +347,9 @@ if st.button("Generate Gantt Chart and Cost Summary"):
             team['cost_per_year'] = calculate_team_cost_per_year(team['team_roles'], team['start_date'], team['end_date'])
             team['total_team_cost'] = sum(team['cost_per_year'].values())
 
+            # Calculate role costs for pie chart
+            team['role_costs'] = calculate_role_costs(team['team_roles'], team['start_date'], team['end_date'])
+
             # Prepare data for Gantt chart
             roles_list = []
             for role_info in team['team_roles']:
@@ -356,7 +369,8 @@ if st.button("Generate Gantt Chart and Cost Summary"):
                 'End': end_date,
                 'Cost': team_cost,
                 'Roles': roles_str,
-                'Description': team_description
+                'Description': team_description,
+                'Role Costs': team['role_costs']
             })
 
             all_years.update(team['cost_per_year'].keys())
@@ -367,25 +381,56 @@ if st.button("Generate Gantt Chart and Cost Summary"):
             gantt_df = pd.DataFrame(gantt_data)
 
             # Create Gantt chart using Altair
-            gantt_chart = alt.Chart(gantt_df).mark_bar().encode(
+            base = alt.Chart(gantt_df).encode(
                 x='Start:T',
                 x2='End:T',
                 y=alt.Y('Team:N', sort=alt.EncodingSortField(field='Start', order='ascending')),
                 color=alt.Color('Cost:Q', scale=alt.Scale(scheme='blues')),
-                tooltip=['Team', 'Start', 'End', 'Cost', 'Roles', 'Description']
+            )
+
+            bars = base.mark_bar().encode(
+                tooltip=[
+                    'Team', 'Start', 'End',
+                    alt.Tooltip('Cost:Q', format='$,.2f'),
+                    'Roles', 'Description'
+                ]
+            )
+
+            # Add interactive pie chart on hover
+            selection = alt.selection_single(fields=['Team'], nearest=True, on='mouseover', empty='none')
+
+            # Data transformation for pie chart
+            pie_data = []
+            for idx, row in gantt_df.iterrows():
+                team_name = row['Team']
+                role_costs = row['Role Costs']
+                for role, cost in role_costs.items():
+                    pie_data.append({
+                        'Team': team_name,
+                        'Role': role,
+                        'Cost': cost
+                    })
+            pie_df = pd.DataFrame(pie_data)
+
+            pie_chart = alt.Chart(pie_df).transform_filter(
+                selection
+            ).mark_arc().encode(
+                theta=alt.Theta('Cost:Q', stack=True),
+                color=alt.Color('Role:N', legend=alt.Legend(title="Roles")),
+                tooltip=[alt.Tooltip('Role:N'), alt.Tooltip('Cost:Q', format='$,.2f')]
             ).properties(
-                title='Team Gantt Chart'
+                width=200,
+                height=200
             )
 
-            # Add year markers to the Gantt chart
-            min_date = gantt_df['Start'].min()
-            max_date = gantt_df['End'].max()
-            year_ticks = pd.date_range(start=min_date.replace(month=1, day=1), end=max_date, freq='YS').to_pydatetime()
-            year_rule = alt.Chart(pd.DataFrame({'year': year_ticks})).mark_rule(strokeDash=[5,5], color='gray').encode(
-                x='year:T'
+            gantt_chart = alt.layer(bars).add_selection(selection)
+
+            combined_chart = alt.hconcat(
+                gantt_chart.properties(title='Team Gantt Chart').interactive(),
+                pie_chart.properties(title='Team Cost Composition')
             )
 
-            st.altair_chart(gantt_chart + year_rule, use_container_width=True)
+            st.altair_chart(combined_chart, use_container_width=True)
 
             # Yearly Cost Summary
             st.header("Yearly Cost Summary")
@@ -444,16 +489,6 @@ if st.button("Generate Gantt Chart and Cost Summary"):
             )
 
             st.altair_chart(stacked_bar_chart, use_container_width=True)
-
-            # Add download button for detailed cost breakdown
-            st.subheader("Download Detailed Cost Breakdown")
-            detailed_csv = detailed_df.to_csv(index=False)
-            st.download_button(
-                label="Download Detailed Costs as CSV",
-                data=detailed_csv,
-                file_name='detailed_costs_per_team.csv',
-                mime='text/csv'
-            )
 
 # Instructions to run the app
 # Save this code to a file (e.g., `team_cost_calculator.py`) and run it using the command `streamlit run team_cost_calculator.py`.
