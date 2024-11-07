@@ -1,3 +1,55 @@
+import streamlit as st
+from datetime import datetime, timedelta
+from streamlit_cookies_manager import EncryptedCookieManager
+
+# Initialize cookie manager (will encrypt cookies)
+cookies = EncryptedCookieManager(prefix="team_cost_calculator", password="your_secret_password")
+
+# Run this function at the beginning to ensure cookies are loaded
+if not cookies.ready():
+    st.stop()
+
+# Function to set and get persistent user input with cookies and session state
+def get_persistent_input(key, default_value=None):
+    # Check if the value exists in cookies (for persistence across sessions)
+    if key in cookies:
+        return cookies[key]
+    # Check if the value exists in session state (for persistence within session)
+    elif key in st.session_state:
+        return st.session_state[key]
+    else:
+        return default_value
+
+def set_persistent_input(key, value):
+    # Store the value in session state (for within-session persistence)
+    st.session_state[key] = value
+    # Store the value in cookies with a 1-day expiry (for cross-session persistence)
+    cookies[key] = value
+    cookies.expire_at(key, datetime.now() + timedelta(days=1))
+    cookies.save()
+
+# Streamlit UI for user input
+def user_input_form():
+    st.title("Team Cost Calculator")
+    
+    # Example of getting user input with persistence
+    name = st.text_input("Enter your name", value=get_persistent_input("name", ""))
+    set_persistent_input("name", name)
+    
+    hourly_rate = st.number_input("Enter hourly rate", value=get_persistent_input("hourly_rate", 0))
+    set_persistent_input("hourly_rate", hourly_rate)
+    
+    hours_worked = st.number_input("Enter hours worked", value=get_persistent_input("hours_worked", 0))
+    set_persistent_input("hours_worked", hours_worked)
+    
+    if st.button("Calculate Cost"):
+        cost = hourly_rate * hours_worked
+        st.write(f"Total cost for {name}: ${cost}")
+
+# Run the user input form
+user_input_form()
+
+# Original code follows
 # Import necessary libraries
 import streamlit as st
 import pandas as pd
@@ -492,3 +544,4 @@ if st.button("Generate Gantt Chart and Cost Summary"):
 
 # Instructions to run the app
 # Save this code to a file (e.g., `team_cost_calculator.py`) and run it using the command `streamlit run team_cost_calculator.py`.
+
