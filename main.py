@@ -1,42 +1,3 @@
-import streamlit as st
-
-# Set page configuration (must be the first Streamlit command)
-st.set_page_config(page_title="Team Cost Calculator", layout="wide")
-
-# Ensure default values are set in session state if they do not exist
-if "name" not in st.session_state:
-    st.session_state["name"] = ""
-if "hourly_rate" not in st.session_state:
-    st.session_state["hourly_rate"] = 0.0
-if "hours_worked" not in st.session_state:
-    st.session_state["hours_worked"] = 0.0
-
-# Streamlit UI for user input with session state persistence
-def user_input_form():
-    st.title("Team Cost Calculator")
-    
-    # Input fields with session state persistence
-    name = st.text_input("Enter your name", value=st.session_state["name"])
-    if name != st.session_state["name"]:
-        st.session_state["name"] = name
-
-    hourly_rate = st.number_input("Enter hourly rate", value=st.session_state["hourly_rate"])
-    if hourly_rate != st.session_state["hourly_rate"]:
-        st.session_state["hourly_rate"] = hourly_rate
-
-    hours_worked = st.number_input("Enter hours worked", value=st.session_state["hours_worked"])
-    if hours_worked != st.session_state["hours_worked"]:
-        st.session_state["hours_worked"] = hours_worked
-    
-    # Calculate and display cost
-    if st.button("Calculate Cost"):
-        cost = st.session_state["hourly_rate"] * st.session_state["hours_worked"]
-        st.write(f"Total cost for {st.session_state['name']}: ${cost}")
-
-# Run the user input form
-user_input_form()
-
-# Original code follows
 # Import necessary libraries
 import streamlit as st
 import pandas as pd
@@ -253,6 +214,19 @@ with st.sidebar:
 
         st.session_state.teams = teams_data
         st.success("Teams data uploaded successfully.")
+
+    # Save draft to browser storage
+    if st.button('Save Draft to Browser'):
+        st.session_state['saved_draft'] = st.session_state.get('teams', [])
+        st.success("Draft saved to browser storage successfully.")
+
+    # Load draft from browser storage
+    if st.button('Load Draft from Browser'):
+        if 'saved_draft' in st.session_state:
+            st.session_state.teams = st.session_state['saved_draft']
+            st.success("Draft loaded from browser storage successfully.")
+        else:
+            st.info("No draft found in browser storage.")
 
     # Reset Teams
     if st.button('Reset All Teams'):
