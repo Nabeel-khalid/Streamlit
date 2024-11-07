@@ -7,7 +7,6 @@ import random
 import json
 from datetime import datetime, date, timedelta
 
-
 # Streamlit UI
 st.set_page_config(page_title="Team Cost Calculator", layout="wide")
 st.title("Team Cost Calculator with Gantt Chart and Yearly Cost Summary")
@@ -225,6 +224,16 @@ with st.sidebar:
     if st.button('Generate Demo Teams'):
         st.session_state.teams = generate_demo_teams()
         st.success("Demo teams have been generated.")
+
+    # Save Session
+    if st.button('Save Session'):
+        session_data = {
+            'teams': st.session_state.teams,
+            'hourly_rates': hourly_rates
+        }
+        session_json = json.dumps(session_data, indent=4)
+        st.download_button('Download Session Data', data=session_json, file_name='session_data.json', mime='application/json')
+        st.success("Session data saved successfully.")
 
 # Initialize session state for teams
 if 'teams' not in st.session_state:
