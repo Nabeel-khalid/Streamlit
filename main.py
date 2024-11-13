@@ -7,10 +7,6 @@ import random
 import json
 from datetime import datetime, date, timedelta
 
-# Streamlit UI
-st.set_page_config(page_title="Team Cost Calculator", layout="wide")
-st.title("Team Cost Calculator with Gantt Chart and Yearly Cost Summary")
-
 # Define the roles and their rates
 hourly_rates = {
     'Management': {
@@ -56,42 +52,41 @@ hourly_rates = {
         'Offshore Professional Services': 123
     }
 }
-
-# Function to calculate costs for a team per year
+# Function to calculate costs for a team per year based on yearly FTE salaries
 def calculate_team_cost_per_year(team_roles, start_date, end_date):
     total_cost = 0
     cost_per_year = {}
+    
     # Convert start_date and end_date to pd.Timestamp
     start_date = pd.Timestamp(start_date)
     end_date = pd.Timestamp(end_date)
 
-    duration_days = (end_date - start_date).days + 1  # Include end date
-    duration_weeks = duration_days / 7
-
-    # Generate a list of dates from start to end
+    # Generate a list of years covered by the date range
     date_range = pd.date_range(start=start_date, end=end_date)
     years = date_range.year.unique()
 
     for year in years:
-        # Calculate the overlapping days in this year
+        # Define start and end of the year to calculate partial or full year overlap
         year_start = pd.Timestamp(f"{year}-01-01")
         year_end = pd.Timestamp(f"{year}-12-31")
 
-        # Adjust the start and end dates for the overlap
+        # Calculate overlapping period within the year
         overlap_start = max(start_date, year_start)
         overlap_end = min(end_date, year_end)
         overlap_days = (overlap_end - overlap_start).days + 1
+        overlap_fraction = overlap_days / 365.25  # Fraction of the year
 
-        overlap_weeks = overlap_days / 7
-
+        # Calculate the cost for each role in this year
         yearly_cost = 0
         for role_info in team_roles:
             role = role_info['role']
-            count = role_info['count']
-            hours_per_week = role_info['hours']
+            count = role_info['count']  # FTE value
             resource_type = role_info['resource_type']
-            rate = hourly_rates.get(role, {}).get(resource_type, 0)
-            yearly_cost += count * hours_per_week * rate * overlap_weeks
+            yearly_salary = yearly_salary = hourly_rates.get(role, {}).get(resource_type, 0) * 1000
+  # Assuming hourly_rates now represents yearly salaries
+
+            # Calculate cost as FTE count times the salary, adjusted for partial year
+            yearly_cost += count * yearly_salary * overlap_fraction
 
         cost_per_year[year] = yearly_cost
 
@@ -150,6 +145,10 @@ def generate_demo_teams():
             'total_team_cost': 0
         })
     return demo_teams
+
+# Streamlit UI
+st.set_page_config(page_title="Team Cost Calculator", layout="wide")
+st.title("Team Cost Calculator with Gantt Chart and Yearly Cost Summary")
 
 # Sidebar for adjusting hourly rates and data import/export
 with st.sidebar:
@@ -225,14 +224,6 @@ with st.sidebar:
         st.session_state.teams = generate_demo_teams()
         st.success("Demo teams have been generated.")
 
-    # Save Session to Browser
-    if st.button('Save Session'):
-        st.session_state['saved_session'] = {
-            'teams': st.session_state.teams,
-            'hourly_rates': hourly_rates
-        }
-        st.success("Session data saved to the browser successfully.")
-
 # Initialize session state for teams
 if 'teams' not in st.session_state:
     st.session_state.teams = []
@@ -268,10 +259,18 @@ if st.session_state.teams:
             with st.expander("Team Duration", expanded=True):
                 # Team Duration
                 col1, col2 = st.columns(2)
-                with col1:
-                    team['start_date'] = st.date_input(f"Start Date", value=team['start_date'], key=f"team_{idx}_start_date")
-                with col2:
-                    team['end_date'] = st.date_input(f"End Date", value=team['end_date'], key=f"team_{idx}_end_date")
+            import calendar
+            from datetime import datetime
+
+            with col1:
+                start_year = st.selectbox("Start Year", options=range(2020, 2031), index=0, key=f"team_{idx}_start_year")
+                start_month = st.selectbox("Start Month", options=list(calendar.month_name[1:]), index=0, key=f"team_{idx}_start_month")
+                team['start_date'] = datetime(start_year, list(calendar.month_name[1:]).index(start_month) + 1, 1).date()
+
+            with col2:
+                end_year = st.selectbox("End Year", options=range(2020, 2031), index=0, key=f"team_{idx}_end_year")
+                end_month = st.selectbox("End Month", options=list(calendar.month_name[1:]), index=11, key=f"team_{idx}_end_month")
+                team['end_date'] = datetime(end_year, list(calendar.month_name[1:]).index(end_month) + 1, 1).date()
 
                 if team['end_date'] and team['start_date']:
                     if team['end_date'] <= team['start_date']:
@@ -314,21 +313,13 @@ if st.session_state.teams:
                         else:
                             st.error(f"No resource types available for {role_info['role']}")
                     with col3:
-                        role_info['count'] = st.number_input(
-                            f"Count",
-                            min_value=0,
-                            value=int(role_info['count']),
-                            step=1,
-                            key=f"team_{idx}_role_{j}_count"
+                        fte_options = [0, 0.25, 0.5, 0.75, 1]
+                        role_info['count'] = st.selectbox("FTE Count (0-1 annually)", 
+                        options=fte_options, 
+                        index=fte_options.index(role_info['count']) if role_info['count'] in fte_options else 0, 
+                        key=f"team_{idx}_role_{j}_fte"
                         )
-                    with col4:
-                        role_info['hours'] = st.number_input(
-                            f"Weekly Hours",
-                            min_value=0.0,
-                            value=float(role_info['hours']),
-                            step=0.1,
-                            key=f"team_{idx}_role_{j}_hours"
-                        )
+
 
             # Delete Team Button
             if st.button('Delete Team', key=f'delete_team_{idx}'):
@@ -424,11 +415,11 @@ if st.button("Generate Gantt Chart and Cost Summary"):
                 selection
             ).mark_arc().encode(
                 theta=alt.Theta('Cost:Q', stack=True),
-                color=alt.Color('Role:N', legend=alt.Legend(title="Roles")),
+                color=alt.Color('Role:N', legend=alt.Legend(title="Roles", orient="bottom")),
                 tooltip=[alt.Tooltip('Role:N'), alt.Tooltip('Cost:Q', format='$,.2f')]
             ).properties(
-                width=200,
-                height=200
+                width=300,
+                height=300
             )
 
             gantt_chart = alt.layer(bars).add_selection(selection)
@@ -500,3 +491,4 @@ if st.button("Generate Gantt Chart and Cost Summary"):
 
 # Instructions to run the app
 # Save this code to a file (e.g., `team_cost_calculator.py`) and run it using the command `streamlit run team_cost_calculator.py`.
+
