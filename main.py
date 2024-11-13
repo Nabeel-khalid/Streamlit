@@ -491,4 +491,3 @@ if st.button("Generate Gantt Chart and Cost Summary"):
 
 # Instructions to run the app
 # Save this code to a file (e.g., `team_cost_calculator.py`) and run it using the command `streamlit run team_cost_calculator.py`.
-
