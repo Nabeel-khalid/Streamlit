@@ -104,22 +104,22 @@ def calculate_role_costs(team_roles, start_date, end_date):
     end_date = pd.Timestamp(end_date)
 
     duration_days = (end_date - start_date).days + 1  # Include end date
-    duration_weeks = duration_days / 7
+    duration_fraction = duration_days / 365.25  # Fraction of a year
 
     role_costs = {}
     for role_info in team_roles:
         role = role_info['role']
         count = role_info['count']
-        hours_per_week = role_info['hours']
         resource_type = role_info['resource_type']
-        rate = hourly_rates.get(role, {}).get(resource_type, 0)
-        cost = count * hours_per_week * rate * duration_weeks
+        yearly_salary = hourly_rates.get(role, {}).get(resource_type, 0) * 1000  # Assuming rates are per 1000 units
+
+        # Calculate cost as FTE count times the salary, adjusted for partial year
+        cost = count * yearly_salary * duration_fraction
         role_key = f"{role} ({resource_type})"
         role_costs[role_key] = cost
 
     return role_costs
 
-# Function to generate demo teams
 def generate_demo_teams():
     demo_teams = []
     team_names = ['Alpha', 'Beta', 'Gamma', 'Delta']
@@ -131,12 +131,11 @@ def generate_demo_teams():
         for _ in range(num_roles):
             role = random.choice(list(hourly_rates.keys()))
             resource_type = random.choice(list(hourly_rates[role].keys()))
-            count = random.uniform(0.5, 5.0)  # Allowing decimal FTEs
-            hours = random.choice([20, 30, 40])
+            count = random.uniform(0.5, 5.0)
+            count = round(count * 2) / 2  # Round to nearest 0.5
             team_roles.append({
                 'role': role,
-                'count': round(count, 2),
-                'hours': hours,
+                'count': count,
                 'resource_type': resource_type
             })
         demo_teams.append({
@@ -345,62 +344,57 @@ if st.session_state.teams:
                     key=f"team_{idx}_num_roles"
                 )
 
-                # Adjust the team_roles list to match num_roles
-                while len(team['team_roles']) < num_roles:
-                    team['team_roles'].append({'role': '', 'count': 1.0, 'hours': 40, 'resource_type': ''})
-                while len(team['team_roles']) > num_roles:
-                    team['team_roles'].pop()
+               # Roles in Team Section
+with st.expander("Roles in Team", expanded=True):
+    # Define Roles in Team
+    num_roles = st.number_input(
+        "Number of Different Roles",
+        min_value=1,
+        value=len(team['team_roles']) if team['team_roles'] else 1,
+        step=1,
+        key=f"team_{idx}_num_roles"
+    )
 
-                for j in range(int(num_roles)):
-                    st.write(f"**Role {j+1}**")
-                    role_info = team['team_roles'][j]
-                    col1, col2, col3, col4 = st.columns(4)
+    # Adjust the team_roles list to match num_roles
+    while len(team['team_roles']) < num_roles:
+        team['team_roles'].append({'role': '', 'count': 1.0, 'resource_type': ''})
+    while len(team['team_roles']) > num_roles:
+        team['team_roles'].pop()
 
-                    with col1:
-                        role_info['role'] = st.selectbox(
-                            "Role",
-                            options=list(hourly_rates.keys()),
-                            index=list(hourly_rates.keys()).index(role_info['role']) if role_info['role'] in hourly_rates else 0,
-                            key=f"team_{idx}_role_{j}_role_select"
-                        )
+    for j in range(int(num_roles)):
+        st.write(f"**Role {j+1}**")
+        role_info = team['team_roles'][j]
+        col1, col2, col3 = st.columns(3)
 
-                    with col2:
-                        resource_types = list(hourly_rates.get(role_info['role'], {}).keys())
-                        if resource_types:
-                            role_info['resource_type'] = st.selectbox(
-                                "Resource Type",
-                                options=resource_types,
-                                index=resource_types.index(role_info['resource_type']) if role_info['resource_type'] in resource_types else 0,
-                                key=f"team_{idx}_role_{j}_resource_type_select"
-                            )
-                        else:
-                            st.error(f"No resource types available for {role_info['role']}")
+        with col1:
+            role_info['role'] = st.selectbox(
+                "Role",
+                options=list(hourly_rates.keys()),
+                index=list(hourly_rates.keys()).index(role_info['role']) if role_info['role'] in hourly_rates else 0,
+                key=f"team_{idx}_role_{j}_role_select"
+            )
 
-                    with col3:
-                        role_info['count'] = st.number_input(
-                            "FTE Count",
-                            min_value=0.0,
-                            value=float(role_info['count']),
-                            step=0.1,
-                            format="%.2f",
-                            key=f"team_{idx}_role_{j}_fte_input"
-                        )
+        with col2:
+            resource_types = list(hourly_rates.get(role_info['role'], {}).keys())
+            if resource_types:
+                role_info['resource_type'] = st.selectbox(
+                    "Resource Type",
+                    options=resource_types,
+                    index=resource_types.index(role_info['resource_type']) if role_info['resource_type'] in resource_types else 0,
+                    key=f"team_{idx}_role_{j}_resource_type_select"
+                )
+            else:
+                st.error(f"No resource types available for {role_info['role']}")
 
-                    with col4:
-                        role_info['hours'] = st.selectbox(
-                            "Hours per Week",
-                            options=[20, 30, 40],
-                            index=[20, 30, 40].index(role_info['hours']) if role_info['hours'] in [20, 30, 40] else 2,
-                            key=f"team_{idx}_role_{j}_hours_select"
-                        )
-
-            # Delete Team Button
-            if st.button('Delete Team', key=f'delete_team_{idx}'):
-                del st.session_state.teams[idx]
-                st.experimental_rerun()
-else:
-    st.write("No teams defined yet.")
-
+        with col3:
+            role_info['count'] = st.number_input(
+                "FTE Count",
+                min_value=0.0,
+                value=float(role_info['count']),
+                step=0.5,
+                format="%.1f",
+                key=f"team_{idx}_role_{j}_fte_input"
+            )
 # Generate Gantt Chart and Cost Summaries
 if st.button("Generate Gantt Chart and Cost Summary", key="generate_gantt_cost_summary"):
     teams = st.session_state.teams
@@ -799,4 +793,5 @@ with st.sidebar:
             st.altair_chart(what_if_cost_bar_chart, use_container_width=True)
         else:
             st.error("No valid teams available for what-if analysis.")
+
 
