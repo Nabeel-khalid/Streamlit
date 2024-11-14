@@ -14,56 +14,56 @@ import calendar
 st.set_page_config(page_title="Team Cost Calculator", layout="wide")
 st.title("Team Cost Calculator with Gantt Chart and Yearly Cost Summary")
 
-# Define the roles and their rates
-hourly_rates = {
+# Define the roles and their yearly salaries
+yearly_salaries = {
     'Management': {
-        'Onshore FTE': 263,
-        'Offshore FTE': 131,
-        'Onshore Professional Services': 394,
-        'Offshore Professional Services': 197
+        'Onshore FTE': 263000,
+        'Offshore FTE': 131000,
+        'Onshore Professional Services': 394000,
+        'Offshore Professional Services': 197000
     },
     'Product Manager': {
-        'Onshore FTE': 140,
-        'Offshore FTE': 105,
-        'Onshore Professional Services': 175,
-        'Offshore Professional Services': 123
+        'Onshore FTE': 140000,
+        'Offshore FTE': 105000,
+        'Onshore Professional Services': 175000,
+        'Offshore Professional Services': 123000
     },
     'Product Specialists': {
-        'Onshore FTE': 140,
-        'Offshore FTE': 88,
-        'Onshore Professional Services': 175,
-        'Offshore Professional Services': 123
+        'Onshore FTE': 140000,
+        'Offshore FTE': 88000,
+        'Onshore Professional Services': 175000,
+        'Offshore Professional Services': 123000
     },
     'Core Dev, Data Science & Infra': {
-        'Onshore FTE': 175,
-        'Offshore FTE': 123,
-        'Onshore Professional Services': 228,
-        'Offshore Professional Services': 140
+        'Onshore FTE': 175000,
+        'Offshore FTE': 123000,
+        'Onshore Professional Services': 228000,
+        'Offshore Professional Services': 140000
     },
     'QA': {
-        'Onshore FTE': 140,
-        'Offshore FTE': 88,
-        'Onshore Professional Services': 175,
-        'Offshore Professional Services': 123
+        'Onshore FTE': 140000,
+        'Offshore FTE': 88000,
+        'Onshore Professional Services': 175000,
+        'Offshore Professional Services': 123000
     },
     'UX Designers': {
-        'Onshore FTE': 175,
-        'Offshore FTE': 123,
-        'Onshore Professional Services': 228,
-        'Offshore Professional Services': 140
+        'Onshore FTE': 175000,
+        'Offshore FTE': 123000,
+        'Onshore Professional Services': 228000,
+        'Offshore Professional Services': 140000
     },
     'Scrum Masters': {
-        'Onshore FTE': 140,
-        'Offshore FTE': 105,
-        'Onshore Professional Services': 175,
-        'Offshore Professional Services': 123
+        'Onshore FTE': 140000,
+        'Offshore FTE': 105000,
+        'Onshore Professional Services': 175000,
+        'Offshore Professional Services': 123000
     }
 }
 
-# Function to calculate costs for a team per year based on yearly FTE salaries
+# Function to calculate costs for a team per year based on yearly salaries
 def calculate_team_cost_per_year(team_roles, start_date, end_date):
     cost_per_year = {}
-    
+
     # Convert start_date and end_date to pd.Timestamp
     start_date = pd.Timestamp(start_date)
     end_date = pd.Timestamp(end_date)
@@ -88,7 +88,7 @@ def calculate_team_cost_per_year(team_roles, start_date, end_date):
             role = role_info['role']
             count = role_info['count']  # FTE value
             resource_type = role_info['resource_type']
-            yearly_salary = hourly_rates.get(role, {}).get(resource_type, 0) * 1000  # Assuming hourly_rates represents yearly salaries
+            yearly_salary = yearly_salaries.get(role, {}).get(resource_type, 0)  # Use yearly salaries directly
 
             # Calculate cost as FTE count times the salary, adjusted for partial year
             yearly_cost += count * yearly_salary * overlap_fraction
@@ -111,7 +111,7 @@ def calculate_role_costs(team_roles, start_date, end_date):
         role = role_info['role']
         count = role_info['count']
         resource_type = role_info['resource_type']
-        yearly_salary = hourly_rates.get(role, {}).get(resource_type, 0) * 1000  # Assuming rates are per 1000 units
+        yearly_salary = yearly_salaries.get(role, {}).get(resource_type, 0)  # Use yearly salaries directly
 
         # Calculate cost as FTE count times the salary, adjusted for partial year
         cost = count * yearly_salary * duration_fraction
@@ -130,8 +130,8 @@ def generate_demo_teams():
         num_roles = random.randint(1, 4)
         team_roles = []
         for _ in range(num_roles):
-            role = random.choice(list(hourly_rates.keys()))
-            resource_type = random.choice(list(hourly_rates[role].keys()))
+            role = random.choice(list(yearly_salaries.keys()))
+            resource_type = random.choice(list(yearly_salaries[role].keys()))
             count = random.uniform(0.5, 5.0)
             count = round(count * 2) / 2  # Round to nearest 0.5
             team_roles.append({
@@ -155,24 +155,24 @@ def generate_demo_teams():
 if 'teams' not in st.session_state:
     st.session_state.teams = []
 
-# Sidebar for adjusting hourly rates and data import/export
+# Sidebar for adjusting yearly salaries and data import/export
 with st.sidebar:
     st.header("Settings")
     
-    # Adjust Hourly Rates
-    with st.expander("Adjust Hourly Rates"):
-        for role in hourly_rates.keys():
-            st.subheader(f"{role} Rates")
-            for resource_type in hourly_rates[role]:
-                current_rate = hourly_rates[role][resource_type]
-                new_rate = st.number_input(
+    # Adjust Yearly Salaries
+    with st.expander("Adjust Yearly Salaries"):
+        for role in yearly_salaries.keys():
+            st.subheader(f"{role} Salaries")
+            for resource_type in yearly_salaries[role]:
+                current_salary = yearly_salaries[role][resource_type]
+                new_salary = st.number_input(
                     f"{resource_type} ({role})",
                     min_value=0,
-                    value=int(current_rate),
-                    step=1,
+                    value=int(current_salary),
+                    step=1000,
                     key=f"{role}_{resource_type}_adjust"
                 )
-                hourly_rates[role][resource_type] = new_rate
+                yearly_salaries[role][resource_type] = new_salary
 
     st.header("Data Import/Export")
 
@@ -366,13 +366,13 @@ if st.session_state.teams:
                     with col1:
                         role_info['role'] = st.selectbox(
                             "Role",
-                            options=list(hourly_rates.keys()),
-                            index=list(hourly_rates.keys()).index(role_info['role']) if role_info['role'] in hourly_rates else 0,
+                            options=list(yearly_salaries.keys()),
+                            index=list(yearly_salaries.keys()).index(role_info['role']) if role_info['role'] in yearly_salaries else 0,
                             key=f"team_{idx}_role_{j}_role_select"
                         )
 
                     with col2:
-                        resource_types = list(hourly_rates.get(role_info['role'], {}).keys())
+                        resource_types = list(yearly_salaries.get(role_info['role'], {}).keys())
                         if resource_types:
                             role_info['resource_type'] = st.selectbox(
                                 "Resource Type",
@@ -702,7 +702,7 @@ with st.sidebar:
         adjusted_team['team_roles'] = [role.copy() for role in team.get('team_roles', [])]
         for j, role_info in enumerate(adjusted_team['team_roles']):
             adjusted_fte = st.number_input(
-                f"Adjust FTE for {role_info['role']} ({role_info['resource_type']}) in {team['team_name'] or f'Team {idx+1}'}",
+                f"Adjust FTE for {role_info['role']} ({role_info['resource_type']})",
                 min_value=0.0,
                 value=float(role_info['count']),
                 step=0.5,
