@@ -246,6 +246,9 @@ if st.button("Add New Team"):
     add_team()
 
 # Display existing teams and allow editing
+# ... [rest of your code above remains unchanged]
+
+# Display existing teams and allow editing
 if st.session_state.teams:
     team_tabs = st.tabs([team['team_name'] or f"Team {idx+1}" for idx, team in enumerate(st.session_state.teams)])
     for idx, (team, team_tab) in enumerate(zip(st.session_state.teams, team_tabs)):
@@ -259,34 +262,40 @@ if st.session_state.teams:
             with st.expander("Team Duration", expanded=True):
                 # Team Duration
                 col1, col2 = st.columns(2)
-            import calendar
-            from datetime import datetime
+                import calendar
+                from datetime import datetime
 
-            with col1:
-                start_year = st.selectbox("Start Year", options=range(2020, 2031), index=0, key=f"team_{idx}_start_year")
-                start_month = st.selectbox("Start Month", options=list(calendar.month_name[1:]), index=0, key=f"team_{idx}_start_month")
-                team['start_date'] = datetime(start_year, list(calendar.month_name[1:]).index(start_month) + 1, 1).date()
+                with col1:
+                    start_year = st.selectbox("Start Year", options=range(2020, 2031), index=0, key=f"team_{idx}_start_year")
+                    start_month = st.selectbox("Start Month", options=list(calendar.month_name[1:]), index=0, key=f"team_{idx}_start_month")
+                    team['start_date'] = datetime(start_year, list(calendar.month_name[1:]).index(start_month) + 1, 1).date()
 
-            with col2:
-                end_year = st.selectbox("End Year", options=range(2020, 2031), index=0, key=f"team_{idx}_end_year")
-                end_month = st.selectbox("End Month", options=list(calendar.month_name[1:]), index=11, key=f"team_{idx}_end_month")
-                team['end_date'] = datetime(end_year, list(calendar.month_name[1:]).index(end_month) + 1, 1).date()
+                with col2:
+                    end_year = st.selectbox("End Year", options=range(2020, 2031), index=0, key=f"team_{idx}_end_year")
+                    end_month = st.selectbox("End Month", options=list(calendar.month_name[1:]), index=11, key=f"team_{idx}_end_month")
+                    team['end_date'] = datetime(end_year, list(calendar.month_name[1:]).index(end_month) + 1, 1).date()
 
-                if team['end_date'] and team['start_date']:
-                    if team['end_date'] <= team['start_date']:
-                        st.error("End date must be after start date.")
-                        team['duration_weeks'] = 0
-                    else:
-                        duration_days = (team['end_date'] - team['start_date']).days + 1
-                        team['duration_weeks'] = duration_days / 7
+                    if team['end_date'] and team['start_date']:
+                        if team['end_date'] <= team['start_date']:
+                            st.error("End date must be after start date.")
+                            team['duration_weeks'] = 0
+                        else:
+                            duration_days = (team['end_date'] - team['start_date']).days + 1
+                            team['duration_weeks'] = duration_days / 7
 
             with st.expander("Roles in Team", expanded=True):
                 # Define Roles in Team
-                num_roles = st.number_input(f"Number of Different Roles", min_value=1, value=len(team['team_roles']) if team['team_roles'] else 1, step=1, key=f"team_{idx}_num_roles")
+                num_roles = st.number_input(
+                    f"Number of Different Roles", 
+                    min_value=1, 
+                    value=len(team['team_roles']) if team['team_roles'] else 1, 
+                    step=1, 
+                    key=f"team_{idx}_num_roles"
+                )
 
                 # Ensure team_roles list matches num_roles
                 while len(team['team_roles']) < num_roles:
-                    team['team_roles'].append({'role': '', 'count': 0, 'hours': 0, 'resource_type': ''})
+                    team['team_roles'].append({'role': '', 'count': 1.0, 'hours': 40, 'resource_type': ''})  # Default count set to 1.0
                 while len(team['team_roles']) > num_roles:
                     team['team_roles'].pop()
 
@@ -313,13 +322,21 @@ if st.session_state.teams:
                         else:
                             st.error(f"No resource types available for {role_info['role']}")
                     with col3:
-                        fte_options = [0, 0.25, 0.5, 0.75, 1]
-                        role_info['count'] = st.selectbox("FTE Count (0-1 annually)", 
-                        options=fte_options, 
-                        index=fte_options.index(role_info['count']) if role_info['count'] in fte_options else 0, 
-                        key=f"team_{idx}_role_{j}_fte"
+                        role_info['count'] = st.number_input(
+                            "FTE Count", 
+                            min_value=0.0, 
+                            value=float(role_info['count']) if role_info['count'] else 1.0, 
+                            step=0.1, 
+                            format="%.2f", 
+                            key=f"team_{idx}_role_{j}_fte"
                         )
-
+                    with col4:
+                        role_info['hours'] = st.selectbox(
+                            "Hours per Week",
+                            options=[20, 30, 40],
+                            index=[20, 30, 40].index(role_info['hours']) if role_info['hours'] in [20, 30, 40] else 2,
+                            key=f"team_{idx}_role_{j}_hours"
+                        )
 
             # Delete Team Button
             if st.button('Delete Team', key=f'delete_team_{idx}'):
@@ -327,6 +344,8 @@ if st.session_state.teams:
                 st.experimental_rerun()
 else:
     st.write("No teams defined yet.")
+
+# ... [rest of your code remains unchanged]
 
 # Generate Gantt Chart and Cost Summaries
 if st.button("Generate Gantt Chart and Cost Summary"):
@@ -488,6 +507,398 @@ if st.button("Generate Gantt Chart and Cost Summary"):
             )
 
             st.altair_chart(stacked_bar_chart, use_container_width=True)
+# ... [Your existing code above]
+# Summary Dashboard with Metrics
+st.header("Summary Dashboard")
+
+if st.session_state.teams:
+    total_cost_all_teams = sum(team['total_team_cost'] for team in teams)
+    average_fte_per_team = np.mean([sum(role['count'] for role in team['team_roles']) for team in teams])
+    highest_cost_team = max(teams, key=lambda x: x['total_team_cost'])
+    highest_cost_team_name = highest_cost_team['team_name'] or f"Team {teams.index(highest_cost_team)+1}"
+    highest_cost = highest_cost_team['total_team_cost']
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Cost All Teams", f"${total_cost_all_teams:,.2f}")
+    with col2:
+        st.metric("Average FTE per Team", f"{average_fte_per_team:.2f}")
+    with col3:
+        st.metric("Highest Cost Team", f"{highest_cost_team_name} (${highest_cost:,.2f})")
+
+    # Optional: Additional Metrics
+    total_fte_all_teams = sum([sum(role['count'] for role in team['team_roles']) for team in teams])
+    total_roles = sum([len(team['team_roles']) for team in teams])
+
+    col4, col5 = st.columns(2)
+    with col4:
+        st.metric("Total FTE All Teams", f"{total_fte_all_teams:.2f}")
+    with col5:
+        st.metric("Total Number of Roles", f"{total_roles}")
+else:
+    st.info("No teams available to display summary metrics.")
+# Heatmap of Costs Over Time
+st.header("Heatmap of Costs Over Time")
+
+if st.session_state.teams:
+    heatmap_data = []
+    for team in teams:
+        team_name = team['team_name'] or f"Team {teams.index(team)+1}"
+        for year, cost in team['cost_per_year'].items():
+            heatmap_data.append({
+                'Team': team_name,
+                'Year': str(year),
+                'Cost': cost
+            })
+
+    heatmap_df = pd.DataFrame(heatmap_data)
+
+    heatmap_chart = alt.Chart(heatmap_df).mark_rect().encode(
+        x=alt.X('Year:O', title='Year'),
+        y=alt.Y('Team:N', title='Team'),
+        color=alt.Color('Cost:Q', scale=alt.Scale(scheme='reds'), title='Cost ($)'),
+        tooltip=['Team', 'Year', alt.Tooltip('Cost:Q', format='$,.2f')]
+    ).properties(
+        width=600,
+        height=400,
+        title='Heatmap of Team Costs Over Years'
+    )
+
+    st.altair_chart(heatmap_chart, use_container_width=True)
+else:
+    st.info("No teams available to display Heatmap.")
+# Interactive Dashboard with Filters
+st.header("Interactive Dashboard")
+
+if st.session_state.teams:
+    # Filters
+    filter_col1, filter_col2 = st.columns(2)
+    with filter_col1:
+        selected_year = st.selectbox("Select Year", options=sorted(all_years), index=0)
+    with filter_col2:
+        selected_team = st.selectbox("Select Team", options=["All"] + [team['team_name'] or f"Team {idx+1}" for idx, team in enumerate(teams)])
+
+    # Filter data based on selections
+    if selected_team != "All":
+        filtered_teams = [team for team in teams if (team['team_name'] or f"Team {teams.index(team)+1}") == selected_team]
+    else:
+        filtered_teams = teams
+
+    # Yearly Cost for Selected Year
+    yearly_cost_filtered = []
+    for team in filtered_teams:
+        cost = team['cost_per_year'].get(selected_year, 0)
+        yearly_cost_filtered.append({
+            'Team': team['team_name'] or f"Team {teams.index(team)+1}",
+            'Cost': cost
+        })
+
+    yearly_cost_filtered_df = pd.DataFrame(yearly_cost_filtered)
+
+    # Display the filtered cost
+    st.subheader(f"Total Costs for Year {selected_year}")
+    st.table(yearly_cost_filtered_df.style.format({'Cost': '${:,.2f}'}))
+
+    # Pie Chart for Cost Distribution in Selected Year
+    pie_chart_filtered = alt.Chart(yearly_cost_filtered_df).mark_arc().encode(
+        theta=alt.Theta(field="Cost", type="quantitative"),
+        color=alt.Color(field="Team", type="nominal"),
+        tooltip=["Team", alt.Tooltip(field="Cost", type="quantitative", format="$,.2f")]
+    ).properties(
+        width=400,
+        height=400,
+        title=f'Cost Distribution for Year {selected_year}'
+    )
+
+    st.altair_chart(pie_chart_filtered, use_container_width=True)
+else:
+    st.info("No teams available for the interactive dashboard.")
+with st.sidebar:
+    st.header("What-If Analysis")
+    st.subheader("Adjust Team FTEs")
+
+    what_if_teams = []
+
+    for idx, team in enumerate(st.session_state.teams):
+        st.markdown(f"### {team['team_name'] or f'Team {idx+1}'}")
+        adjusted_team = team.copy()
+        for j, role_info in enumerate(team['team_roles']):
+            adjusted_fte = st.number_input(
+                f"Adjust FTE for {role_info['role']} ({role_info['resource_type']}) in {team['team_name'] or f'Team {idx+1}'}",
+                min_value=0.0,
+                value=float(role_info['count']),
+                step=0.1,
+                format="%.2f",
+                key=f"what_if_team_{idx}_role_{j}"
+            )
+            adjusted_team['team_roles'][j]['count'] = adjusted_fte
+        what_if_teams.append(adjusted_team)
+
+    if st.button('Apply What-If Analysis'):
+        # Calculate new costs based on adjusted FTEs
+        what_if_gantt_data = []
+        what_if_all_years = set()
+        for team in what_if_teams:
+            if not team['start_date'] or not team['end_date'] or not team['team_roles']:
+                st.warning(f"Team '{team['team_name'] or 'Unnamed'}' is incomplete and will be skipped.")
+                continue
+
+            # Calculate team cost per year
+            team['cost_per_year'] = calculate_team_cost_per_year(team['team_roles'], team['start_date'], team['end_date'])
+            team['total_team_cost'] = sum(team['cost_per_year'].values())
+
+            # Calculate role costs for pie chart
+            team['role_costs'] = calculate_role_costs(team['team_roles'], team['start_date'], team['end_date'])
+
+            # Prepare data for Gantt chart
+            roles_list = []
+            for role_info in team['team_roles']:
+                count = role_info['count']
+                role = role_info['role']
+                resource_type = role_info['resource_type']
+                roles_list.append(f"{count} x {role} ({resource_type})")
+            roles_str = ", ".join(roles_list)
+            team_name = team['team_name'] or f"Team {teams.index(team)+1}"
+            team_cost = team['total_team_cost']
+            team_description = team['team_description']
+            start_date = pd.Timestamp(team['start_date'])
+            end_date = pd.Timestamp(team['end_date'])
+            what_if_gantt_data.append({
+                'Team': team_name,
+                'Start': start_date,
+                'End': end_date,
+                'Cost': team_cost,
+                'Roles': roles_str,
+                'Description': team_description,
+                'Role Costs': team['role_costs']
+            })
+
+            what_if_all_years.update(team['cost_per_year'].keys())
+
+        # Visualize the what-if scenario
+        if what_if_gantt_data:
+            what_if_gantt_df = pd.DataFrame(what_if_gantt_data)
+
+            # Display the new Gantt chart
+            what_if_chart = alt.Chart(what_if_gantt_df).mark_bar().encode(
+                x='Start:T',
+                x2='End:T',
+                y=alt.Y('Team:N', sort=alt.EncodingSortField(field='Start', order='ascending')),
+                color=alt.Color('Cost:Q', scale=alt.Scale(scheme='oranges')),
+                tooltip=[
+                    'Team', 'Start', 'End',
+                    alt.Tooltip('Cost:Q', format='$,.2f'),
+                    'Roles', 'Description'
+                ]
+            ).properties(
+                width=600,
+                height=400,
+                title='What-If Teams Gantt Chart'
+            )
+
+            st.altair_chart(what_if_chart, use_container_width=True)
+
+            # Display the new cost summary
+            st.header("What-If Yearly Cost Summary")
+            what_if_years = sorted(what_if_all_years)
+            what_if_yearly_costs = []
+            for year in what_if_years:
+                total_cost = 0
+                for team in what_if_teams:
+                    team_cost = team['cost_per_year'].get(year, 0)
+                    total_cost += team_cost
+                what_if_yearly_costs.append({'Year': year, 'Cost': total_cost})
+
+            what_if_yearly_costs_df = pd.DataFrame(what_if_yearly_costs)
+
+            # Display the summary table
+            st.subheader("Total Costs per Year (What-If Scenario)")
+            st.table(what_if_yearly_costs_df.style.format({'Cost': '${:,.2f}'}))
+
+            # Bar chart of yearly costs
+            what_if_cost_bar_chart = alt.Chart(what_if_yearly_costs_df).mark_bar(color='orange').encode(
+                x='Year:O',
+                y='Cost:Q',
+                tooltip=['Year', alt.Tooltip('Cost:Q', format=",.2f")]
+            ).properties(
+                title='Total Costs per Year (What-If Scenario)'
+            )
+
+            st.altair_chart(what_if_cost_bar_chart, use_container_width=True)
+        else:
+            st.error("No valid teams available for what-if analysis.")
+
+# Generate Gantt Chart and Cost Summaries
+if st.button("Generate Gantt Chart and Cost Summary"):
+    teams = st.session_state.teams
+    if not teams:
+        st.error("Please define at least one team.")
+    else:
+        # Calculate costs and prepare data
+        gantt_data = []
+        all_years = set()
+        for team in teams:
+            if not team['start_date'] or not team['end_date'] or not team['team_roles']:
+                st.warning(f"Team '{team['team_name'] or 'Unnamed'}' is incomplete and will be skipped.")
+                continue
+
+            # Calculate team cost per year
+            team['cost_per_year'] = calculate_team_cost_per_year(team['team_roles'], team['start_date'], team['end_date'])
+            team['total_team_cost'] = sum(team['cost_per_year'].values())
+
+            # Calculate role costs for pie chart
+            team['role_costs'] = calculate_role_costs(team['team_roles'], team['start_date'], team['end_date'])
+
+            # Prepare data for Gantt chart
+            roles_list = []
+            for role_info in team['team_roles']:
+                count = role_info['count']
+                role = role_info['role']
+                resource_type = role_info['resource_type']
+                roles_list.append(f"{count} x {role} ({resource_type})")
+            roles_str = ", ".join(roles_list)
+            team_name = team['team_name'] or f"Team {teams.index(team)+1}"
+            team_cost = team['total_team_cost']
+            team_description = team['team_description']
+            start_date = pd.Timestamp(team['start_date'])
+            end_date = pd.Timestamp(team['end_date'])
+            gantt_data.append({
+                'Team': team_name,
+                'Start': start_date,
+                'End': end_date,
+                'Cost': team_cost,
+                'Roles': roles_str,
+                'Description': team_description,
+                'Role Costs': team['role_costs']
+            })
+
+            all_years.update(team['cost_per_year'].keys())
+
+        if not gantt_data:
+            st.error("No complete teams to display.")
+        else:
+            gantt_df = pd.DataFrame(gantt_data)
+
+            # Existing Gantt Chart
+            base = alt.Chart(gantt_df).encode(
+                x='Start:T',
+                x2='End:T',
+                y=alt.Y('Team:N', sort=alt.EncodingSortField(field='Start', order='ascending')),
+                color=alt.Color('Cost:Q', scale=alt.Scale(scheme='blues')),
+            )
+
+            bars = base.mark_bar().encode(
+                tooltip=[
+                    'Team', 'Start', 'End',
+                    alt.Tooltip('Cost:Q', format='$,.2f'),
+                    'Roles', 'Description'
+                ]
+            )
+
+            # Add interactive pie chart on hover
+            selection = alt.selection_single(fields=['Team'], nearest=True, on='mouseover', empty='none')
+
+            # Data transformation for pie chart
+            pie_data = []
+            for idx, row in gantt_df.iterrows():
+                team_name = row['Team']
+                role_costs = row['Role Costs']
+                for role, cost in role_costs.items():
+                    pie_data.append({
+                        'Team': team_name,
+                        'Role': role,
+                        'Cost': cost
+                    })
+            pie_df = pd.DataFrame(pie_data)
+
+            pie_chart = alt.Chart(pie_df).transform_filter(
+                selection
+            ).mark_arc().encode(
+                theta=alt.Theta('Cost:Q', stack=True),
+                color=alt.Color('Role:N', legend=alt.Legend(title="Roles", orient="bottom")),
+                tooltip=[alt.Tooltip('Role:N'), alt.Tooltip('Cost:Q', format='$,.2f')]
+            ).properties(
+                width=300,
+                height=300
+            )
+
+            gantt_chart = alt.layer(bars).add_selection(selection)
+
+            combined_chart = alt.hconcat(
+                gantt_chart.properties(title='Team Gantt Chart').interactive(),
+                pie_chart.properties(title='Team Cost Composition')
+            )
+
+            st.altair_chart(combined_chart, use_container_width=True)
+
+            # Existing Yearly Cost Summary
+            st.header("Yearly Cost Summary")
+            all_years = sorted(all_years)
+            yearly_costs = []
+            for year in all_years:
+                total_cost = 0
+                for team in teams:
+                    team_cost = team['cost_per_year'].get(year, 0)
+                    total_cost += team_cost
+                yearly_costs.append({'Year': year, 'Cost': total_cost})
+
+            yearly_costs_df = pd.DataFrame(yearly_costs)
+
+            # Display the summary table
+            st.subheader("Total Costs per Year")
+            st.table(yearly_costs_df.style.format({'Cost': '${:,.2f}'}))
+
+            # Bar chart of yearly costs
+            cost_bar_chart = alt.Chart(yearly_costs_df).mark_bar().encode(
+                x='Year:O',
+                y='Cost:Q',
+                tooltip=['Year', alt.Tooltip('Cost:Q', format=",.2f")]
+            ).properties(
+                title='Total Costs per Year'
+            )
+
+            st.altair_chart(cost_bar_chart, use_container_width=True)
+
+            # Detailed breakdown per team per year
+            st.subheader("Detailed Costs per Team per Year")
+            detailed_data = []
+            for team in teams:
+                team_name = team['team_name'] or f"Team {teams.index(team)+1}"
+                for year, cost in team['cost_per_year'].items():
+                    detailed_data.append({
+                        'Team': team_name,
+                        'Year': year,
+                        'Cost': cost
+                    })
+            detailed_df = pd.DataFrame(detailed_data)
+
+            # Pivot table to show teams as rows and years as columns
+            pivot_df = detailed_df.pivot(index='Team', columns='Year', values='Cost').fillna(0)
+            pivot_df = pivot_df.reset_index()
+            st.table(pivot_df.style.format({col: '${:,.2f}' for col in pivot_df.columns if col != 'Team'}))
+
+            # Stacked bar chart per team per year
+            stacked_bar_chart = alt.Chart(detailed_df).mark_bar().encode(
+                x='Year:O',
+                y='Cost:Q',
+                color='Team:N',
+                tooltip=['Team', 'Year', alt.Tooltip('Cost:Q', format=",.2f")]
+            ).properties(
+                title='Costs per Team per Year'
+            )
+
+            st.altair_chart(stacked_bar_chart, use_container_width=True)
+
+            # **Add additional visualizations here**
+            # For example:
+            # 1. Team Cost Comparison Bar Chart
+            # 2. Cost Distribution by Role (Treemap)
+            # 3. Team Size vs. Cost Scatter Plot
+            # ... (as implemented above)
+else:
+    st.error("No teams defined yet.")
+
+# ... [Include additional visualization sections here as per the above implementations]
 
 # Instructions to run the app
 # Save this code to a file (e.g., `team_cost_calculator.py`) and run it using the command `streamlit run team_cost_calculator.py`.
