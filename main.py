@@ -162,17 +162,17 @@ with st.sidebar:
     # Adjust Hourly Rates
     with st.expander("Adjust Hourly Rates"):
         for role in hourly_rates.keys():
-            with st.expander(f"{role} Rates"):
-                for resource_type in hourly_rates[role]:
-                    current_rate = hourly_rates[role][resource_type]
-                    new_rate = st.number_input(
-                        f"{resource_type} ({role})",
-                        min_value=0,
-                        value=int(current_rate),
-                        step=1,
-                        key=f"{role}_{resource_type}_adjust"
-                    )
-                    hourly_rates[role][resource_type] = new_rate
+            st.subheader(f"{role} Rates")
+            for resource_type in hourly_rates[role]:
+                current_rate = hourly_rates[role][resource_type]
+                new_rate = st.number_input(
+                    f"{resource_type} ({role})",
+                    min_value=0,
+                    value=int(current_rate),
+                    step=1,
+                    key=f"{role}_{resource_type}_adjust"
+                )
+                hourly_rates[role][resource_type] = new_rate
 
     st.header("Data Import/Export")
 
@@ -258,9 +258,10 @@ if st.button("Add New Team", key="add_new_team"):
 
 # Display existing teams and allow editing
 if st.session_state.teams:
-    team_names = [team['team_name'] or f"Team {idx+1}" for idx, team in enumerate(st.session_state.teams)]
+    teams = st.session_state.teams  # For convenience
+    team_names = [team['team_name'] or f"Team {idx+1}" for idx, team in enumerate(teams)]
     team_tabs = st.tabs(team_names)
-    for idx, (team, team_tab) in enumerate(zip(st.session_state.teams, team_tabs)):
+    for idx, (team, team_tab) in enumerate(zip(teams, team_tabs)):
         with team_tab:
             # Team Details Section
             with st.expander("Team Details", expanded=True):
@@ -634,7 +635,12 @@ if st.session_state.teams:
     # Filters
     filter_col1, filter_col2 = st.columns(2)
     with filter_col1:
-        selected_year = st.selectbox("Select Year", options=all_years, index=0, key="filter_selected_year")
+        selected_year = st.selectbox(
+            "Select Year",
+            options=all_years,
+            index=0,
+            key="filter_selected_year"
+        )
     with filter_col2:
         selected_team = st.selectbox(
             "Select Team",
@@ -751,13 +757,12 @@ with st.sidebar:
                 x2='End:T',
                 y=alt.Y('Team:N', sort=alt.EncodingSortField(field='Start', order='ascending')),
                 color=alt.Color('Cost:Q', scale=alt.Scale(scheme='oranges')),
-            ).mark_bar().encode(
                 tooltip=[
                     'Team', 'Start', 'End',
                     alt.Tooltip('Cost:Q', format='$,.2f'),
                     'Roles', 'Description'
                 ]
-            ).properties(
+            ).mark_bar().properties(
                 width=600,
                 height=400,
                 title='What-If Teams Gantt Chart'
@@ -794,3 +799,4 @@ with st.sidebar:
             st.altair_chart(what_if_cost_bar_chart, use_container_width=True)
         else:
             st.error("No valid teams available for what-if analysis.")
+
