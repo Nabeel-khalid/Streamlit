@@ -242,6 +242,10 @@ with st.sidebar:
                 if 'team_roles' not in team or team['team_roles'] is None:
                     team['team_roles'] = []
 
+                # Reset calculated fields
+                team['cost_per_year'] = {}
+                team['total_team_cost'] = 0
+
             st.session_state.teams = teams_data
             st.success("Teams data uploaded successfully.")
         except Exception as e:
@@ -259,13 +263,16 @@ with st.sidebar:
 
 # Function to add a new team
 def add_team():
+    # Set default role and resource type
+    default_role = list(yearly_salaries.keys())[0]
+    default_resource_type = list(yearly_salaries[default_role].keys())[0]
     st.session_state.teams.append({
         'team_name': '',
         'team_description': '',
         'start_date': date.today(),
         'end_date': date.today() + timedelta(days=30),
         'duration_weeks': 0,
-        'team_roles': [],  # Ensure team_roles is initialized as an empty list
+        'team_roles': [{'role': default_role, 'count': 1.0, 'resource_type': default_resource_type}],
         'cost_per_year': {},
         'total_team_cost': 0
     })
@@ -298,59 +305,29 @@ if st.session_state.teams:
             with st.expander("Team Duration", expanded=True):
                 col1, col2 = st.columns(2)
                 with col1:
-                    start_year = st.selectbox(
-                        "Start Year",
-                        options=range(2020, 2031),
-                        index=0,
-                        key=f"team_{idx}_start_year"
+                    start_date_input = st.date_input(
+                        "Start Date",
+                        value=team['start_date'],
+                        key=f"team_{idx}_start_date"
                     )
-                    start_month = st.selectbox(
-                        "Start Month",
-                        options=list(calendar.month_name)[1:],  # Exclude empty string at index 0
-                        index=0,
-                        key=f"team_{idx}_start_month"
-                    )
-                    try:
-                        team['start_date'] = datetime(
-                            start_year,
-                            list(calendar.month_name).index(start_month),
-                            1
-                        ).date()
-                    except Exception as e:
-                        st.error(f"Invalid start date: {e}")
-                        team['duration_weeks'] = 0
+                    team['start_date'] = start_date_input
 
                 with col2:
-                    end_year = st.selectbox(
-                        "End Year",
-                        options=range(2020, 2031),
-                        index=10,  # Default to 2030
-                        key=f"team_{idx}_end_year"
+                    end_date_input = st.date_input(
+                        "End Date",
+                        value=team['end_date'],
+                        key=f"team_{idx}_end_date"
                     )
-                    end_month = st.selectbox(
-                        "End Month",
-                        options=list(calendar.month_name)[1:],  # Exclude empty string at index 0
-                        index=11,
-                        key=f"team_{idx}_end_month"
-                    )
-                    try:
-                        team['end_date'] = datetime(
-                            end_year,
-                            list(calendar.month_name).index(end_month),
-                            1
-                        ).date()
-                    except Exception as e:
-                        st.error(f"Invalid end date: {e}")
-                        team['duration_weeks'] = 0
+                    team['end_date'] = end_date_input
 
-                    # Calculate duration in weeks
-                    if team['end_date'] and team['start_date']:
-                        if team['end_date'] <= team['start_date']:
-                            st.error("End date must be after start date.")
-                            team['duration_weeks'] = 0
-                        else:
-                            duration_days = (team['end_date'] - team['start_date']).days + 1
-                            team['duration_weeks'] = round(duration_days / 7, 2)
+                # Calculate duration in weeks
+                if team['end_date'] and team['start_date']:
+                    if team['end_date'] <= team['start_date']:
+                        st.error("End date must be after start date.")
+                        team['duration_weeks'] = 0
+                    else:
+                        duration_days = (team['end_date'] - team['start_date']).days + 1
+                        team['duration_weeks'] = round(duration_days / 7, 2)
 
             # Roles in Team Section
             with st.expander("Roles in Team", expanded=True):
@@ -578,34 +555,4 @@ if st.button("Generate Gantt Chart and Cost Summary", key="generate_gantt_cost_s
 
             st.altair_chart(stacked_bar_chart, use_container_width=True)
 
-# Summary Dashboard with Metrics
-st.header("Summary Dashboard")
-
-if st.session_state.teams:
-    teams = st.session_state.teams  # For convenience
-
-    total_cost_all_teams = sum(team.get('total_team_cost', 0) for team in teams)
-    average_fte_per_team = round(np.mean([sum(role['count'] for role in team.get('team_roles', []) if role.get('count')) for team in teams]), 2)
-    highest_cost_team = max(teams, key=lambda x: x.get('total_team_cost', 0))
-    highest_cost_team_name = highest_cost_team['team_name'] or f"Team {teams.index(highest_cost_team)+1}"
-    highest_cost = highest_cost_team.get('total_team_cost', 0)
-
-    total_fte_all_teams = round(sum([sum(role['count'] for role in team.get('team_roles', []) if role.get('count')) for team in teams]), 2)
-    total_roles = sum([len(team.get('team_roles', [])) for team in teams])
-
-    # Create columns for metrics
-    col1, col2, col3, col4, col5 = st.columns(5)
-    with col1:
-        st.metric("Total Cost All Teams", f"${total_cost_all_teams:,.2f}")
-    with col2:
-        st.metric("Average FTE per Team", f"{average_fte_per_team:.2f}")
-    with col3:
-        st.metric("Highest Cost Team", f"{highest_cost_team_name} (${highest_cost:,.2f})")
-    with col4:
-        st.metric("Total FTE All Teams", f"{total_fte_all_teams:.2f}")
-    with col5:
-        st.metric("Total Number of Roles", f"{total_roles}")
-else:
-    st.info("No teams available to display summary metrics.")
-
-# The rest of your application code (Heatmap, Interactive Dashboard, What-If Analysis) remains unchanged.
+# The rest of your application code (Summary Dashboard, Heatmap, Interactive Dashboard, What-If Analysis) remains unchanged.
