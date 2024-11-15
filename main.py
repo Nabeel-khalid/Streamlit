@@ -139,8 +139,12 @@ def generate_demo_teams():
     demo_teams = []
     team_names = ['Alpha', 'Beta', 'Gamma', 'Delta']
     for i in range(4):
-        start_date = date.today() + timedelta(days=random.randint(0, 90))
-        end_date = start_date + timedelta(days=random.randint(90, 180))
+        start_year = date.today().year + random.randint(0, 2)
+        start_month = random.randint(1, 12)
+        start_date = datetime(start_year, start_month, 1).date()
+        end_year = start_year + random.randint(0, 2)
+        end_month = random.randint(start_month, 12) if end_year == start_year else random.randint(1, 12)
+        end_date = datetime(end_year, end_month, 1).date()
         num_roles = random.randint(1, 4)
         team_roles = []
         for _ in range(num_roles):
@@ -156,8 +160,10 @@ def generate_demo_teams():
         demo_teams.append({
             'team_name': f"Team {team_names[i]}",
             'team_description': f"Description for Team {team_names[i]}",
-            'start_date': start_date,
-            'end_date': end_date,
+            'start_year': start_year,
+            'start_month': start_month,
+            'end_year': end_year,
+            'end_month': end_month,
             'duration_weeks': 0,
             'team_roles': team_roles,
             'cost_per_year': {},
@@ -197,16 +203,6 @@ with st.sidebar:
             teams_copy = []
             for team in st.session_state.teams:
                 team_copy = team.copy()
-                # Convert datetime.date objects to strings
-                if isinstance(team_copy['start_date'], date):
-                    team_copy['start_date'] = team_copy['start_date'].isoformat()
-                if isinstance(team_copy['end_date'], date):
-                    team_copy['end_date'] = team_copy['end_date'].isoformat()
-                team_roles_copy = []
-                for role_info in team_copy.get('team_roles', []):
-                    role_info_copy = role_info.copy()
-                    team_roles_copy.append(role_info_copy)
-                team_copy['team_roles'] = team_roles_copy
                 teams_copy.append(team_copy)
 
             teams_json = json.dumps(teams_copy, indent=4)
@@ -226,19 +222,8 @@ with st.sidebar:
             teams_json = uploaded_file.read().decode('utf-8')
             teams_data = json.loads(teams_json)
 
-            # Convert date strings back to datetime.date objects
+            # Ensure 'team_roles' is initialized
             for team in teams_data:
-                if 'start_date' in team and team['start_date']:
-                    team['start_date'] = datetime.fromisoformat(team['start_date']).date()
-                else:
-                    team['start_date'] = None
-
-                if 'end_date' in team and team['end_date']:
-                    team['end_date'] = datetime.fromisoformat(team['end_date']).date()
-                else:
-                    team['end_date'] = None
-
-                # Ensure 'team_roles' is initialized
                 if 'team_roles' not in team or team['team_roles'] is None:
                     team['team_roles'] = []
 
@@ -269,8 +254,10 @@ def add_team():
     st.session_state.teams.append({
         'team_name': '',
         'team_description': '',
-        'start_date': date.today(),
-        'end_date': date.today() + timedelta(days=30),
+        'start_year': date.today().year,
+        'start_month': date.today().month,
+        'end_year': date.today().year,
+        'end_month': date.today().month,
         'duration_weeks': 0,
         'team_roles': [{'role': default_role, 'count': 1.0, 'resource_type': default_resource_type}],
         'cost_per_year': {},
@@ -305,29 +292,63 @@ if st.session_state.teams:
             with st.expander("Team Duration", expanded=True):
                 col1, col2 = st.columns(2)
                 with col1:
-                    start_date_input = st.date_input(
-                        "Start Date",
-                        value=team['start_date'],
-                        key=f"team_{idx}_start_date"
+                    start_year = st.selectbox(
+                        "Start Year",
+                        options=range(2020, 2031),
+                        index=team.get('start_year', date.today().year) - 2020,
+                        key=f"team_{idx}_start_year"
                     )
-                    team['start_date'] = start_date_input
+                    start_month = st.selectbox(
+                        "Start Month",
+                        options=list(calendar.month_name)[1:],  # Exclude empty string at index 0
+                        index=team.get('start_month', date.today().month) - 1,
+                        key=f"team_{idx}_start_month"
+                    )
+                    try:
+                        team['start_year'] = start_year
+                        team['start_month'] = list(calendar.month_name).index(start_month)
+                        team['start_date'] = datetime(
+                            start_year,
+                            team['start_month'],
+                            1
+                        ).date()
+                    except Exception as e:
+                        st.error(f"Invalid start date: {e}")
+                        team['duration_weeks'] = 0
 
                 with col2:
-                    end_date_input = st.date_input(
-                        "End Date",
-                        value=team['end_date'],
-                        key=f"team_{idx}_end_date"
+                    end_year = st.selectbox(
+                        "End Year",
+                        options=range(2020, 2031),
+                        index=team.get('end_year', date.today().year) - 2020,
+                        key=f"team_{idx}_end_year"
                     )
-                    team['end_date'] = end_date_input
-
-                # Calculate duration in weeks
-                if team['end_date'] and team['start_date']:
-                    if team['end_date'] <= team['start_date']:
-                        st.error("End date must be after start date.")
+                    end_month = st.selectbox(
+                        "End Month",
+                        options=list(calendar.month_name)[1:],  # Exclude empty string at index 0
+                        index=team.get('end_month', date.today().month) - 1,
+                        key=f"team_{idx}_end_month"
+                    )
+                    try:
+                        team['end_year'] = end_year
+                        team['end_month'] = list(calendar.month_name).index(end_month)
+                        team['end_date'] = datetime(
+                            end_year,
+                            team['end_month'],
+                            1
+                        ).date()
+                    except Exception as e:
+                        st.error(f"Invalid end date: {e}")
                         team['duration_weeks'] = 0
-                    else:
-                        duration_days = (team['end_date'] - team['start_date']).days + 1
-                        team['duration_weeks'] = round(duration_days / 7, 2)
+
+                    # Calculate duration in weeks
+                    if team['end_date'] and team['start_date']:
+                        if team['end_date'] <= team['start_date']:
+                            st.error("End date must be after start date.")
+                            team['duration_weeks'] = 0
+                        else:
+                            duration_days = (team['end_date'] - team['start_date']).days + 1
+                            team['duration_weeks'] = round(duration_days / 7, 2)
 
             # Roles in Team Section
             with st.expander("Roles in Team", expanded=True):
@@ -404,7 +425,7 @@ if st.button("Generate Gantt Chart and Cost Summary", key="generate_gantt_cost_s
         gantt_data = []
         all_years = set()
         for team in teams:
-            if not team['start_date'] or not team['end_date'] or not team.get('team_roles'):
+            if not team.get('start_date') or not team.get('end_date') or not team.get('team_roles'):
                 st.warning(f"Team '{team['team_name'] or 'Unnamed'}' is incomplete and will be skipped.")
                 continue
 
@@ -556,3 +577,35 @@ if st.button("Generate Gantt Chart and Cost Summary", key="generate_gantt_cost_s
             st.altair_chart(stacked_bar_chart, use_container_width=True)
 
 # The rest of your application code (Summary Dashboard, Heatmap, Interactive Dashboard, What-If Analysis) remains unchanged.
+
+# Summary Dashboard with Metrics
+st.header("Summary Dashboard")
+
+if st.session_state.teams:
+    teams = st.session_state.teams  # For convenience
+
+    total_cost_all_teams = sum(team.get('total_team_cost', 0) for team in teams)
+    average_fte_per_team = round(np.mean([sum(role['count'] for role in team.get('team_roles', []) if role.get('count')) for team in teams]), 2)
+    highest_cost_team = max(teams, key=lambda x: x.get('total_team_cost', 0))
+    highest_cost_team_name = highest_cost_team['team_name'] or f"Team {teams.index(highest_cost_team)+1}"
+    highest_cost = highest_cost_team.get('total_team_cost', 0)
+
+    total_fte_all_teams = round(sum([sum(role['count'] for role in team.get('team_roles', []) if role.get('count')) for team in teams]), 2)
+    total_roles = sum([len(team.get('team_roles', [])) for team in teams])
+
+    # Create columns for metrics
+    col1, col2, col3, col4, col5 = st.columns(5)
+    with col1:
+        st.metric("Total Cost All Teams", f"${total_cost_all_teams:,.2f}")
+    with col2:
+        st.metric("Average FTE per Team", f"{average_fte_per_team:.2f}")
+    with col3:
+        st.metric("Highest Cost Team", f"{highest_cost_team_name} (${highest_cost:,.2f})")
+    with col4:
+        st.metric("Total FTE All Teams", f"{total_fte_all_teams:.2f}")
+    with col5:
+        st.metric("Total Number of Roles", f"{total_roles}")
+else:
+    st.info("No teams available to display summary metrics.")
+
+# The rest of your application code (Heatmap, Interactive Dashboard, What-If Analysis) remains unchanged.
