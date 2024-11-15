@@ -175,6 +175,22 @@ def generate_demo_teams():
 if 'teams' not in st.session_state:
     st.session_state.teams = []
 
+# Function to load teams from local storage
+def load_teams_from_storage():
+    stored_teams_json = st.session_state.get('stored_teams', '[]')
+    try:
+        teams_data = json.loads(stored_teams_json)
+        st.session_state.teams = teams_data
+    except Exception as e:
+        st.error(f"Error loading teams from storage: {e}")
+
+# Function to save teams to local storage
+def save_teams_to_storage():
+    st.session_state.stored_teams = json.dumps(st.session_state.teams)
+
+# Load teams when the app starts
+load_teams_from_storage()
+
 # Sidebar for adjusting yearly salaries and data import/export
 with st.sidebar:
     st.header("Settings")
@@ -200,10 +216,7 @@ with st.sidebar:
     if st.button('Export Teams', key='export_teams'):
         if st.session_state.get('teams'):
             # Prepare data for export
-            teams_copy = []
-            for team in st.session_state.teams:
-                team_copy = team.copy()
-                teams_copy.append(team_copy)
+            teams_copy = st.session_state.teams.copy()
 
             teams_json = json.dumps(teams_copy, indent=4)
             st.download_button(
@@ -232,6 +245,7 @@ with st.sidebar:
                 team['total_team_cost'] = 0
 
             st.session_state.teams = teams_data
+            save_teams_to_storage()
             st.success("Teams data uploaded successfully.")
         except Exception as e:
             st.error(f"Error uploading teams data: {e}")
@@ -239,11 +253,13 @@ with st.sidebar:
     # Reset Teams
     if st.button('Reset All Teams', key='reset_all_teams'):
         st.session_state.teams = []
+        save_teams_to_storage()
         st.success("All teams have been reset.")
 
     # Generate Demo Teams
     if st.button('Generate Demo Teams', key='generate_demo_teams'):
         st.session_state.teams = generate_demo_teams()
+        save_teams_to_storage()
         st.success("Demo teams have been generated.")
 
 # Function to add a new team
@@ -263,6 +279,7 @@ def add_team():
         'cost_per_year': {},
         'total_team_cost': 0
     })
+    save_teams_to_storage()
 
 # Add Team Button
 if st.button("Add New Team", key="add_new_team"):
@@ -411,7 +428,11 @@ if st.session_state.teams:
             # Delete Team Button
             if st.button('Delete Team', key=f'delete_team_{idx}'):
                 del st.session_state.teams[idx]
+                save_teams_to_storage()
                 st.experimental_rerun()
+
+    # Save teams when any input changes
+    save_teams_to_storage()
 else:
     st.write("No teams defined yet.")
 
@@ -444,7 +465,7 @@ if st.button("Generate Gantt Chart and Cost Summary", key="generate_gantt_cost_s
                 resource_type = role_info['resource_type']
                 roles_list.append(f"{count} x {role} ({resource_type})")
             roles_str = ", ".join(roles_list)
-            team_name = team['team_name'] or f"Team {teams.index(team)+1}"
+            team_name = team['team_name'] or f"Team {idx+1}"
             team_cost = team['total_team_cost']
             team_description = team['team_description']
             start_date = pd.Timestamp(team['start_date'])
@@ -482,8 +503,16 @@ if st.button("Generate Gantt Chart and Cost Summary", key="generate_gantt_cost_s
                 ]
             )
 
-            # Add interactive pie chart on hover
-            selection = alt.selection_single(fields=['Team'], nearest=True, on='mouseover', empty='none')
+            # Modify selection
+            selection = alt.selection_single(
+                fields=['Team'],
+                on='mouseover',
+                nearest=False,
+                empty='none',
+                clear='mouseout'
+            )
+
+            gantt_chart = bars.add_selection(selection)
 
             # Data transformation for pie chart
             pie_data = []
@@ -508,8 +537,6 @@ if st.button("Generate Gantt Chart and Cost Summary", key="generate_gantt_cost_s
                 width=300,
                 height=300
             )
-
-            gantt_chart = alt.layer(bars).add_selection(selection)
 
             combined_chart = alt.hconcat(
                 gantt_chart.properties(title='Team Gantt Chart').interactive(),
@@ -575,7 +602,6 @@ if st.button("Generate Gantt Chart and Cost Summary", key="generate_gantt_cost_s
             )
 
             st.altair_chart(stacked_bar_chart, use_container_width=True)
-
 # The rest of your application code (Summary Dashboard, Heatmap, Interactive Dashboard, What-If Analysis) remains unchanged.
 
 # Summary Dashboard with Metrics
